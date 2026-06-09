@@ -1,0 +1,29 @@
+# DAWalka — Python backend requirements
+#
+# The Python side of DAWalka exposes a local HTTP service (port 47823) that
+# the AU plugin talks to.  Inference runs in pure MLX (no PyTorch) using the
+# vendored copy of Stability AI's official sa3_mlx package.
+#
+# Pin the versions that match the JUCE-side ModelManager::getCatalogue().
+
+# --- Core HTTP server ---
+aiohttp>=3.9.0
+numpy>=1.26,<3.0
+soundfile>=0.12.1
+# Polyphase resampling for 44.1→48 kHz so WAVs stay in tempo at
+# the host's project rate (needed for looped bars to align on the grid).
+scipy>=1.11.0
+
+# --- Apple Silicon (MLX) ---
+# Install ONLY on Apple Silicon machines.
+# mlx>=0.30.0
+# mlx-metal>=0.30.0
+
+# --- Stable Audio 3 / sa3_mlx ---
+# Vendored under python_backend/vendor/sa3_mlx/ for offline builds.
+# Runtime deps that we still need in the venv:
+sentencepiece>=0.2.0    # T5Gemma tokenizer
+
+# --- Model downloader (used by build.sh and installer/_hf_download.py) ---
+huggingface_hub>=0.20.0
+requests>=2.31.0  # used by _hf_download.py for streamed download with progress

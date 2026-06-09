@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""DAWalka Launcher — starts the Stable Audio 3 Python backend.
+
+Launched by the AU plugin via NSWorkspace (allowed from a sandboxed
+host process).  This script runs OUTSIDE the plugin sandbox and can
+fork+exec the python server normally.
+
+The Python venv is created by build.sh (one-time per machine) and
+lives in a stable location:
+    ~/Library/Application Support/DAWalka/venv/
+
+If the venv is missing, we log a clear error telling the user to
+run build.sh — we no longer try to create the venv on first launch
+(avoids the sandboxed Python / wrong-version issues we hit before).
+
+Configuration is read from launcher_args.json (written by the C++
+plugin just before NSWorkspace.openURL:).  Sandboxed launches can't
+take custom argv, so the plugin uses this small file as a side
+channel for the output dir, models dir, log file, etc.
+"""
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+LOG_DIR = Path.home() / "Library" / "Application Support" / "DAWalka"
+LOG_FILE = LOG_DIR / "backend.log"
+PID_FILE = LOG_DIR / "backend.pid"
+LAUNCHER_ARGS = LOG_DIR / "launcher_args.json"
+PORT = 47823
+MODELS_DIR = Path.home() / "Library" / "Application Support" / "DAWalka" / "models"
+OUTPUT_DIR = Path.home() / "Documents" / "DAWalka" / "T2A"   # default (T2A folder; A2A folder is separate)
+VENV = LOG_DIR / "venv"     # STABLE per-machine location; created by build.sh
+
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+# OUTPUT_DIR.mkdir is intentionally NOT called here — main() does it
+# AFTER load_args() overrides OUTPUT_DIR with the value from
+# launcher_args.json.  (If we mkdir the default at module load, we'd
+# briefly create the stale ~/Documents/DAWalka/T2A even when the user
+# has configured a different folder — and historically we accidentally
+# created ~/Documents/DAWalka/outputs here.)
+
+
+def log(msg):
+    ts = time.strftime("%H:%M:%S")
+    with open(LOG_FILE, "a") as f:
+        f.write(f"[{ts}] {msg}\n")
+    print(f"[{ts}] {msg}", file=sys.stderr)
+
+
+def load_args():
+    """Read launcher_args.json written by the C++ plugin.  Returns a
+    dict with any of: output_dir, models_dir, log_file, pid_file, port.
+    Falls back to defaults if the file is missing or malformed."""
+    global MODELS_DIR, OUTPUT_DIR, LOG_FILE, PID_FILE, PORT
+    if not LAUNCHER_ARGS.exists():
+        return
+    try:
+        d = json.loads(LAUNCHER_ARGS.read_text())
+    except Exception as e:
+        log(f"WARNING: failed to parse {LAUNCHER_ARGS}: {e}")
+        return
+    if "output_dir" in d and d["output_dir"]:
+        OUTPUT_DIR = Path(d["output_dir"])
+    if "models_dir" in d and d["models_dir"]:
+        MODELS_DIR = Path(d["models_dir"])
+    if "log_file" in d and d["log_file"]:
+        LOG_FILE = Path(d["log_file"])
+    if "pid_file" in d and d["pid_file"]:
+        PID_FILE = Path(d["pid_file"])
+    if "port" in d and d["port"]:
+        try:
+            PORT = int(d["port"])
+        except (TypeError, ValueError):
+            pass
+
+
+def find_plugin_bundle(argv1):
+    """Return the DAWalka plugin bundle that contains this launcher.
+
+    AU and VST3 bundles both use Contents/Resources/python_backend, but
+    sandbox-friendly NSWorkspace launches do not reliably pass argv.  Walking
+    up from this script keeps VST3 independent from an installed AU copy.
+    """
+    if argv1:
+        candidate = Path(argv1)
+        if (candidate / "Contents" / "Resources" / "python_backend").is_dir():
+            return candidate
+
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if parent.suffix in {".component", ".vst3"}:
+            if (parent / "Contents" / "Resources" / "python_backend").is_dir():
+                return parent
+
+    vst3 = Path.home() / "Library" / "Audio" / "Plug-Ins" / "VST3" / "DAWalka.vst3"
+    if (vst3 / "Contents" / "Resources" / "python_backend").is_dir():
+        return vst3
+
+    return Path.home() / "Library" / "Audio" / "Plug-Ins" / "Components" / "DAWalka.component"
+
+
+def main():
+    load_args()
+    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
+    argv1 = sys.argv[1] if len(sys.argv) > 1 else ""
+    plugin_bundle = find_plugin_bundle(argv1)
+    py_backend = plugin_bundle / "Contents" / "Resources" / "python_backend"
+    if not py_backend.is_dir():
+        log(f"ERROR: python_backend not found at {py_backend}")
+        sys.exit(1)
+
+    log(f"config: output={OUTPUT_DIR}  models={MODELS_DIR}  port={PORT}")
+
+    # Already running?
+    if PID_FILE.exists():
+        try:
+            old = int(PID_FILE.read_text().strip())
+            os.kill(old, 0)
+            log(f"backend already running (pid {old})")
+            sys.exit(0)
+        except (OSError, ValueError):
+            PID_FILE.unlink(missing_ok=True)
+
+    # Check venv is ready (created by build.sh).  The mlx import probe
+    # is a soft warning — the import sometimes fails in the launcher's
+    # limited GUI-session env even when the actual server (a fresh
+    # subprocess) is fine.  We log the warning but still attempt to
+    # start the server.
+    py = VENV / "bin" / "python3"
+    if not py.exists():
+        log(f"ERROR: venv not found at {VENV}.  Run ./build.sh to install.")
+        sys.exit(1)
+    try:
+        r = subprocess.run([str(py), "-c", "import mlx.core"],
+                           capture_output=True, text=True, timeout=10)
+        if r.returncode != 0:
+            log(f"WARNING: mlx import probe failed in launcher (env issue?): "
+                f"{r.stderr.strip()[:200]} — continuing anyway, server may still work")
+    except Exception as e:
+        log(f"WARNING: venv probe errored: {e} — continuing anyway")
+
+    server_py = py_backend / "server.py"
+    log(f"starting server.py on 127.0.0.1:{PORT} (venv={VENV})")
+    env = os.environ.copy()
+    # The backend runs from inside the signed plug-in bundle.  Python's
+    # default bytecode cache would create __pycache__/*.pyc files there,
+    # invalidating the bundle signature and making stricter hosts such as
+    # Ableton hide the VST3 during scanning.
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    # Force the server to run as native arm64.  When the launcher is
+    # invoked from a sandboxed AU host via NSWorkspace, the inherited
+    # arch can be x86_64 (Rosetta) — which then makes aiohttp/numpy/mlx
+    # fail to load their arm64 .so bundles with
+    # "have 'arm64', need 'x86_64'".  `arch -arm64` forces the right
+    # architecture regardless of how the launcher was launched.
+    arch_bin = "/usr/bin/arch"
+    logFile_fh = open(LOG_FILE, "a")
+    proc = subprocess.Popen(
+        [arch_bin, "-arm64", str(py), "-B", str(server_py),
+         "--port", str(PORT),
+         "--host", "127.0.0.1",
+         "--models", str(MODELS_DIR),
+         "--outputs", str(OUTPUT_DIR),
+         "--log-file", str(LOG_FILE)],
+        stdout=logFile_fh,
+        stderr=subprocess.STDOUT,
+        stdin=subprocess.DEVNULL,
+        cwd=py_backend,
+        env=env,
+        start_new_session=True,   # fully detach from this process
+    )
+    log(f"server launched (pid {proc.pid})")
+    PID_FILE.write_text(str(proc.pid))
+    logFile_fh.close()
+    # We deliberately do NOT wait for the server — it runs in its own
+    # session and will outlive this launcher.
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
