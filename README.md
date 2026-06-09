@@ -1,5 +1,7 @@
 # DAWalka
 
+![DAWalka Screenshot](shot.png)
+
 **AI Audio Generator for DAWs** — an AU/VST3 plugin that generates
 music loops, instrument phrases, textures, and sound effects with
 **Stable Audio 3**, fully on-device, inside your DAW project.
