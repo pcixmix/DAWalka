@@ -135,3 +135,9 @@ For full troubleshooting tips and the dev documentation, see the
 project page on GitHub:
 
 **https://github.com/pcixmix/DAWalka**
+
+## Support
+
+If you find this project useful, consider supporting its continued development with a subscription. Your contribution helps fund ongoing improvements, maintenance, and future updates while keeping the plugin completely free and open-source.
+
+**https://boosty.to/pcixmix**
