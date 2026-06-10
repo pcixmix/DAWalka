@@ -32,7 +32,7 @@ Latest version and source:
 | | Recommended |
 |---|---|
 | macOS | 14 Sonoma or newer |
-| Mac | Apple Silicon M-series (M1 / M2 / M3 / M4) |
+| Mac | Apple Silicon M-series (M1 / M2 / M3 / M4 / M5) |
 | RAM | 16 GB+ |
 | Free disk | 10 GB for the plugin, venv, and all model weights |
 
