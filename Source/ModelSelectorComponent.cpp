@@ -8,8 +8,13 @@ ModelSelectorComponent::ModelSelectorComponent (ModelManager& m)
 {
     addAndMakeVisible (selector);
     addAndMakeVisible (statusLabel);
+    addAndMakeVisible (folderButton);
 
     selector.onChange = [this] { comboChanged(); };
+
+    folderButton.onClick = [this] { folderButtonClicked(); };
+    folderButton.setButtonText ("...");
+    folderButton.setTooltip ("Choose models folder");
 
     mm.addListener (this);
     refresh();
@@ -23,6 +28,11 @@ ModelSelectorComponent::~ModelSelectorComponent()
 void ModelSelectorComponent::setOnSelectionChanged (std::function<void (const juce::String&)> cb)
 {
     onSelectionChanged = std::move (cb);
+}
+
+void ModelSelectorComponent::setOnModelsDirChanged (std::function<void()> cb)
+{
+    onModelsDirChanged = std::move (cb);
 }
 
 juce::String ModelSelectorComponent::getSelectedId() const
@@ -153,17 +163,46 @@ void ModelSelectorComponent::paint (juce::Graphics& g)
     g.fillAll (juce::Colour::fromRGB (24, 27, 35));
     g.setColour (juce::Colour::fromRGB (40, 44, 56));
     g.drawRoundedRectangle (getLocalBounds().toFloat().reduced (0.5f), 6.0f, 1.0f);
+
+    // Update tooltip based on custom path
+    auto customDir = mm.getCustomModelsDirectory();
+    if (customDir.isDirectory())
+        folderButton.setTooltip ("Models: " + customDir.getFileName() + "\nClick to change");
+    else
+        folderButton.setTooltip ("Choose models folder");
 }
 
 void ModelSelectorComponent::resized()
 {
-    // Layout: [status label on the left]  [combo fills the rest]
-    // The component is only ~22 px tall — keep it tight.
+    // Layout: [status label] [combo fills the rest] [folder button]
     auto r = getLocalBounds().reduced (8, 2);
     int statusW = 90;
+    int folderBtnW = 28;
     statusLabel.setBounds (r.removeFromLeft (statusW));
-    r.removeFromLeft (6);
+    r.removeFromLeft (4);
+    folderButton.setBounds (r.removeFromRight (folderBtnW));
+    r.removeFromRight (4);
     selector.setBounds (r);
+}
+
+void ModelSelectorComponent::folderButtonClicked()
+{
+    auto currentDir = mm.getCustomModelsDirectory();
+    auto defaultDir = currentDir.isDirectory() ? currentDir
+                                               : juce::File::getSpecialLocation (juce::File::userHomeDirectory);
+
+    auto* chooser = new juce::FileChooser ("Choose Models Folder", defaultDir, "", true);
+    chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+        [this, chooser] (const juce::FileChooser& fc)
+        {
+            auto result = fc.getResult();
+            if (result.isDirectory())
+            {
+                mm.setCustomModelsDirectory (result);
+                if (onModelsDirChanged) onModelsDirChanged();
+            }
+            delete chooser;
+        });
 }
 
 } // namespace dawalka

@@ -305,8 +305,11 @@ bool BackendClient::launchProcess()
                           .getChildFile ("DAWalka");
         juce::DynamicObject::Ptr args = new juce::DynamicObject();
         args->setProperty ("output_dir", outputDir.getFullPathName());
-        args->setProperty ("models_dir",
-            homeDir.getChildFile ("models").getFullPathName());
+        // Use custom models directory if set, otherwise default
+        auto modelsDir = modelManager.getCustomModelsDirectory();
+        if (!modelsDir.isDirectory())
+            modelsDir = homeDir.getChildFile ("models");
+        args->setProperty ("models_dir", modelsDir.getFullPathName());
         args->setProperty ("log_file",  logFile.getFullPathName());
         args->setProperty ("pid_file",  pidFile.getFullPathName());
         args->setProperty ("port",      47823);

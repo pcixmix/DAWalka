@@ -14,6 +14,7 @@ public:
     ~ModelSelectorComponent() override;
 
     void setOnSelectionChanged (std::function<void (const juce::String&)> cb);
+    void setOnModelsDirChanged (std::function<void()> cb);
     juce::String getSelectedId() const;
     // Select a model by its id (e.g. "sa3-sm-music").  No-op if the
     // id isn't in the current list — callers (e.g. the editor on
@@ -33,7 +34,9 @@ private:
     ModelManager&                            mm;
     juce::ComboBox                           selector;
     juce::Label                              statusLabel;
+    juce::TextButton                         folderButton { "..." };
     std::function<void (const juce::String&)> onSelectionChanged;
+    std::function<void()>                     onModelsDirChanged;
     std::map<int, juce::String>              idsByIndex;    // combo index -> model id
 
     juce::String currentId;
@@ -42,6 +45,7 @@ private:
     void syncFromManager();
     void updateStatus();
     void comboChanged();
+    void folderButtonClicked();
 };
 
 } // namespace dawalka

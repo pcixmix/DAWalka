@@ -425,6 +425,48 @@ fi
 
 # ─── 4. Models (skipped if all 8 .npz already exist) ──────────────────────
 step "4/5  Downloading Stable Audio 3 MLX weights (if not present)"
+
+# Ask user where to store models (default or custom path)
+MODELS_PATH_FILE="$LOG_DIR/models_path.txt"
+CUSTOM_MODELS_DIR=""
+if [[ -f "$MODELS_PATH_FILE" ]]; then
+    CUSTOM_MODELS_DIR="$(cat "$MODELS_PATH_FILE" 2>/dev/null)"
+    if [[ -n "$CUSTOM_MODELS_DIR" && -d "$CUSTOM_MODELS_DIR" ]]; then
+        MODELS_DIR="$CUSTOM_MODELS_DIR"
+        ok "Using custom models location: $MODELS_DIR"
+    fi
+fi
+
+if [[ -z "$CUSTOM_MODELS_DIR" || ! -d "$CUSTOM_MODELS_DIR" ]]; then
+    # Ask user if they want custom location via osascript dialog
+    CUSTOM_CHOICE=$(osascript -e '
+        tell application "System Events"
+            set diag to display dialog "Where would you like to store DAWalka models?" & return & return & "Default: ~/Library/Application Support/DAWalka/models" & return & "(~6.7 GB required)" & return & return & "Click \"Custom Location\" to choose an external drive or folder." buttons {"Custom Location", "Use Default"} default button 2 with title "DAWalka — Model Storage"
+            set btn to button returned of diag
+            return btn
+        end tell' 2>/dev/null || echo "DEFAULT")
+
+    if [[ "$CUSTOM_CHOICE" == "Custom Location" ]]; then
+        CUSTOM_MODELS_DIR=$(osascript -e '
+            tell application "System Events"
+                set folderPath to POSIX path of (choose folder with prompt "Choose where to store DAWalka models:" default location (path to home folder))
+                return folderPath
+            end tell' 2>/dev/null)
+        if [[ -n "$CUSTOM_MODELS_DIR" ]]; then
+            # Remove trailing slash if present
+            CUSTOM_MODELS_DIR="${CUSTOM_MODELS_DIR%/}"
+            MODELS_DIR="$CUSTOM_MODELS_DIR"
+            mkdir -p "$MODELS_DIR"
+            echo "$CUSTOM_MODELS_DIR" > "$MODELS_PATH_FILE"
+            ok "Custom models location: $MODELS_DIR"
+        else
+            ok "Using default location: $MODELS_DIR"
+        fi
+    else
+        ok "Using default location: $MODELS_DIR"
+    fi
+fi
+
 mkdir -p "$MODELS_DIR"
 
 # Optional HF auth (only for rate limit bumps)

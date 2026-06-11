@@ -434,7 +434,7 @@
     // even when the user scrolls the install output above it.
     NSTextField *versionLabel = [[NSTextField alloc]
         initWithFrame:NSMakeRect(20, 4, 200, 14)];
-    versionLabel.stringValue = @"DAWalka v1.1";
+    versionLabel.stringValue = @"DAWalka v1.1.1";
     versionLabel.textColor = [NSColor tertiaryLabelColor];
     versionLabel.font = [NSFont systemFontOfSize:9.5];
     versionLabel.bezeled = NO;
@@ -456,7 +456,7 @@
     [self appendLine:@"All output is shown below in real time.  If something fails,\n"];
     [self appendLine:@"you can copy the error from here for a bug report.\n\n"];
     [self appendLine:@"---\n"];
-    [self appendLine:@"DAWalka v1.1\n"];
+    [self appendLine:@"DAWalka v1.1.1\n"];
 
     [self.window makeKeyAndOrderFront:nil];
 }

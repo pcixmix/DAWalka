@@ -64,6 +64,12 @@ public:
     juce::File getModelsDirectory() const;
     juce::File getModelDirectory (const juce::String& id) const;
 
+    // Set a custom models directory.  Pass an empty/invalid File to
+    // revert to the default location.  Persists the choice to disk so
+    // the launcher can read it on next startup.
+    void setCustomModelsDirectory (const juce::File& dir);
+    juce::File getCustomModelsDirectory() const;
+
     bool isModelReady (const juce::String& id) const;
     juce::File getModelPath (const juce::String& id) const;
 
@@ -103,6 +109,7 @@ private:
     mutable juce::CriticalSection mutex;
     std::unordered_map<juce::String, ModelState> states;
     juce::ListenerList<Listener> listeners;
+    juce::File  customModelsDir;   // user-chosen models location
 
     juce::String currentJobId;
     bool         cancelRequested = false;

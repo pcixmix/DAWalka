@@ -743,6 +743,11 @@ void PluginEditor::buildMain()
         updateSoloEnabled();
         saveToSettings();
     });
+    modelSelector->setOnModelsDirChanged ([this] {
+        // Models directory changed — restart backend to pick up new location
+        processor.getBackend().stop();
+        processor.getBackend().start();
+    });
 
     // Prompt
     promptLabel.setText ("PROMPT", juce::dontSendNotification);

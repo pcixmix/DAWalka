@@ -108,6 +108,20 @@ std::optional<ModelDescriptor> ModelManager::findById (const juce::String& id)
 ModelManager::ModelManager()
     : juce::Thread ("DAWalka-ModelManager")
 {
+    // Load custom models directory from settings file (written by installer or plugin UI)
+    auto settingsFile = juce::File::getSpecialLocation (juce::File::userHomeDirectory)
+                            .getChildFile ("Library/Application Support/DAWalka/models_path.txt");
+    if (settingsFile.existsAsFile())
+    {
+        auto path = settingsFile.loadFileAsString().trim();
+        if (path.isNotEmpty())
+        {
+            auto dir = juce::File (path);
+            if (dir.isDirectory())
+                customModelsDir = dir;
+        }
+    }
+
     installedFile = getModelsDirectory().getChildFile ("installed.json");
     loadInstalledFromDisk();
     refreshStateFromDisk();
@@ -124,6 +138,14 @@ ModelManager::~ModelManager()
 
 juce::File ModelManager::getModelsDirectory() const
 {
+    // Use custom directory if set and valid
+    if (customModelsDir.isDirectory())
+    {
+        if (!customModelsDir.exists())
+            customModelsDir.createDirectory();
+        return customModelsDir;
+    }
+
     // IMPORTANT: do NOT use juce::File::userApplicationDataDirectory here.
     // In a sandboxed AU (Logic Pro 11's AUHostingServiceXPC_arrow) JUCE's
     // userApplicationDataDirectory resolves to ~/Library/ (the container root),
@@ -137,6 +159,33 @@ juce::File ModelManager::getModelsDirectory() const
                    .getChildFile (kModelsDirectory);
     if (!dir.exists()) dir.createDirectory();
     return dir;
+}
+
+void ModelManager::setCustomModelsDirectory (const juce::File& dir)
+{
+    if (dir.isDirectory())
+        customModelsDir = dir;
+    else
+        customModelsDir = juce::File();
+
+    // Persist to settings file so the launcher/server can read it
+    auto settingsFile = juce::File::getSpecialLocation (juce::File::userHomeDirectory)
+                            .getChildFile ("Library/Application Support/DAWalka/models_path.txt");
+    if (customModelsDir.isDirectory())
+        settingsFile.replaceWithText (customModelsDir.getFullPathName());
+    else if (settingsFile.existsAsFile())
+        settingsFile.deleteFile();
+
+    // Refresh installed.json path and re-read state
+    installedFile = getModelsDirectory().getChildFile ("installed.json");
+    loadInstalledFromDisk();
+    refreshStateFromDisk();
+    notifyList();
+}
+
+juce::File ModelManager::getCustomModelsDirectory() const
+{
+    return customModelsDir;
 }
 
 juce::File ModelManager::getModelDirectory (const juce::String& id) const
