@@ -38,8 +38,8 @@ if(NOT APPLE)
     message(FATAL_ERROR "DAWalka supports macOS only")
 endif()
 
-set(CMAKE_OSX_DEPLOYMENT_TARGET "14.0" CACHE STRING "macOS deployment target")
-set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "Build architectures")
+set(CMAKE_OSX_DEPLOYMENT_TARGET "14.0" CACHE STRING "macOS deployment target" FORCE)
+set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "Build architectures" FORCE)
 
 # JUCE 8 — pulled via FetchContent (or override JUCE_DIR to use local install)
 set(JUCE_DIR "" CACHE PATH "Path to local JUCE 8 install (leave empty to fetch)")

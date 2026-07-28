@@ -219,16 +219,16 @@ fi
 # For real distribution you'd swap "-" for a Developer ID, but for the
 # common case (developer copies the .app to /Applications on their own
 # Mac) this is fine.
+#
+# IMPORTANT: do NOT re-sign nested bundles (component/, vst3/,
+# standalone/) here — `codesign --deep` already signed them, and a
+# second pass on the nested bundle invalidates the parent signature
+# (CodeResources no longer matches the on-disk hash), which makes
+# Gatekeeper report "the application is damaged" on first launch.
 echo "==> Ad-hoc code signing"
 if ! codesign --force --deep --sign - "$APP_BUNDLE" 2>&1; then
     echo "WARNING: codesign failed; the .app will still work but may need" >&2
     echo "         'xattr -dr com.apple.quarantine' on first launch." >&2
-fi
-
-# Also sign the bundled standalone app so it launches cleanly from /Applications
-if [[ -d "$APP_BUNDLE/Contents/Resources/standalone/DAWalka.app" ]]; then
-    codesign --force --deep --sign - \
-        "$APP_BUNDLE/Contents/Resources/standalone/DAWalka.app" 2>/dev/null || true
 fi
 
 # ─── summary ───────────────────────────────────────────────────────────────
