@@ -215,6 +215,11 @@ void FileListComponent::paint (juce::Graphics& g)
 {
     g.fillAll (juce::Colour::fromRGB (24, 27, 35));
 
+    // Orange accent bar on the left edge of the viewport area
+    auto vpBounds = viewport.getBounds();
+    g.setColour (juce::Colour::fromRGB (255, 122, 89));
+    g.fillRect (vpBounds.getX(), vpBounds.getY(), 3, vpBounds.getHeight());
+
     // Empty-list hint (the drag-hover overlay is a child component,
     // see DragOverlay, so it paints on top of the viewport by itself).
     if (rows.isEmpty())

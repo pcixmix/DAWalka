@@ -31,10 +31,10 @@ public:
     void       setSelectedFile (const juce::File& f);
 
     // Callbacks
-    void setOnSelect  (std::function<void (const juce::File&)> cb);
-    void setOnPlay    (std::function<void (const juce::File&)> cb);
-    void setOnDelete  (std::function<void (const juce::File&)> cb);
-    void setOnMenu    (std::function<void()> cb);   // popup menu (change folder, etc.)
+    void setOnSelect (std::function<void (const juce::File&)> cb);
+    void setOnPlay   (std::function<void (const juce::File&)> cb);
+    void setOnDelete (std::function<void (const juce::File&)> cb);
+    void setOnMenu   (std::function<void()> cb);   // popup menu (change folder, etc.)
 
     // Optional metadata provider — if set, each row is rendered with
     // the rich HistoryEntry view (badge, timestamp, prompt, model +
@@ -215,38 +215,42 @@ private:
         void paint (juce::Graphics& g) override
         {
             auto r = getLocalBounds();
+            const bool isA2A = meta && meta->kind == "a2a";
+            const auto accent = isA2A
+                ? juce::Colour::fromRGB (88, 198, 165)   // green for A2A
+                : juce::Colour::fromRGB (255, 122, 89); // orange for T2A
             auto bg = selected
-                ? juce::Colour::fromRGB (62, 72, 102)               // brighter blue
+                ? accent.withAlpha (0.18f)               // tinted bg matches the accent
                 : (index % 2 == 0
-                    ? juce::Colour::fromRGB (28, 31, 40)
-                    : juce::Colour::fromRGB (24, 27, 35));
+                    ? juce::Colour::fromRGB (26, 29, 38)
+                    : juce::Colour::fromRGB (22, 25, 34));
             g.setColour (bg);
-            g.fillRect (r);
+            g.fillRoundedRectangle (r.toFloat(), 4.0f);
 
             // Subtle outer border for the selected row so it stands
-            // out even when surrounded by similar-looking rows.
+            // out against the busy history list.
             if (selected)
             {
-                g.setColour (juce::Colour::fromRGB (255, 255, 255).withAlpha (0.18f));
-                g.drawRect (r.reduced (0, 1), 1);
+                g.setColour (accent.withAlpha (0.35f));
+                g.drawRoundedRectangle (r.toFloat().reduced (0.5f), 4.0f, 1.0f);
             }
 
-            // Accent bar on the left.  Wider + brighter when selected.
-            // Colour mirrors the T2A/A2A badge so the user can tell
-            // generation types apart at a glance.
-            const bool isA2A = meta && meta->kind == "a2a";
-            const int accentW = selected ? 5 : 3;
-            g.setColour (selected
-                ? juce::Colours::white
-                : (isA2A
-                    ? juce::Colour::fromRGB (88, 198, 165)   // green for A2A
-                    : juce::Colour::fromRGB (255, 122, 89))); // orange for T2A
-            g.fillRect (r.removeFromLeft (accentW));
+            // Accent bar on the left — colour depends on the kind (T2A = orange,
+            // A2A = green) so the user can tell generation types apart at a
+            // glance in the OUTPUT list.  Wider when selected.
+            const int accentW = selected ? 4 : 3;
+            g.setColour (accent);
+            // Draw accent as a clipped rect on the left edge of the rounded row
+            {
+                juce::Path accentPath;
+                accentPath.addRectangle (r.getX(), r.getY(), accentW, r.getHeight());
+                g.fillPath (accentPath);
+            }
 
-            auto textR = r.withX (r.getX() + 10)
-                           .withWidth (playButton.getX() - r.getX() - 12)
-                           .withY (r.getY() + 4)
-                           .withHeight (r.getHeight() - 8);
+            auto textR = r.withX (r.getX() + 12)
+                           .withWidth (playButton.getX() - r.getX() - 16)
+                           .withY (r.getY() + 5)
+                           .withHeight (r.getHeight() - 10);
 
             if (meta)
             {
@@ -255,37 +259,37 @@ private:
                 // meta line.  This is what the user sees for files
                 // they generated in DAWalka and then re-selected as
                 // an A2A input.
-                const int badgeW = 30;
-                auto badgeR = textR.removeFromLeft (badgeW).withHeight (16);
+                const int badgeW = 32;
+                auto badgeR = textR.removeFromLeft (badgeW).withHeight (17);
                 g.setColour (isA2A
-                    ? juce::Colour::fromRGB (88, 198, 165).withAlpha (0.20f)
-                    : juce::Colour::fromRGB (255, 122, 89).withAlpha (0.20f));
-                g.fillRoundedRectangle (badgeR.toFloat(), 3.0f);
+                    ? juce::Colour::fromRGB (88, 198, 165).withAlpha (0.18f)
+                    : juce::Colour::fromRGB (255, 122, 89).withAlpha (0.18f));
+                g.fillRoundedRectangle (badgeR.toFloat(), 3.5f);
                 g.setColour (isA2A
                     ? juce::Colour::fromRGB (88, 198, 165)
                     : juce::Colour::fromRGB (255, 122, 89));
-                g.setFont (juce::Font (9.5f, juce::Font::bold));
+                g.setFont (juce::Font (9.0f, juce::Font::bold));
                 g.drawText (isA2A ? "A2A" : "T2A", badgeR,
                             juce::Justification::centred);
-                textR.removeFromLeft (4);
+                textR.removeFromLeft (6);  // gap between badge and text
 
                 g.setColour (selected
                     ? juce::Colours::white
                     : juce::Colour::fromRGB (235, 237, 245));
                 g.setFont (juce::Font (selected ? 12.5f : 12.0f, juce::Font::bold));
-                g.drawText (richTimestamp, textR.removeFromTop (16),
+                g.drawText (richTimestamp, textR.removeFromTop (17),
                             juce::Justification::centredLeft);
 
                 g.setColour (selected
                     ? juce::Colour::fromRGB (210, 214, 230)
-                    : juce::Colour::fromRGB (180, 184, 200));
+                    : juce::Colour::fromRGB (170, 174, 190));
                 g.setFont (juce::Font (11.0f));
                 g.drawText (richPrompt, textR.removeFromTop (16),
                             juce::Justification::centredLeft);
 
                 g.setColour (selected
-                    ? juce::Colour::fromRGB (200, 210, 230)
-                    : juce::Colour::fromRGB (120, 124, 140));
+                    ? juce::Colour::fromRGB (190, 200, 220)
+                    : juce::Colour::fromRGB (110, 114, 130));
                 g.setFont (juce::Font (10.0f));
                 g.drawText (richMeta, textR, juce::Justification::centredLeft);
             }
@@ -315,14 +319,14 @@ private:
 
         void resized() override
         {
-            auto r = getLocalBounds().reduced (8, 4);
-            int bw = 28;     // [x] button width
-            int pw = 48;     // Play button width
-            int h  = 22;
+            auto r = getLocalBounds().reduced (10, 6);
+            int bw = 30;     // [x] button width
+            int pw = 50;     // Play button width
+            int h  = 24;
             int y  = (r.getHeight() - h) / 2 + r.getY();
 
             deleteButton.setBounds (r.getRight() - bw,                    y, bw, h);
-            playButton.setBounds   (r.getRight() - bw - pw - 4,           y, pw, h);
+            playButton.setBounds   (r.getRight() - bw - pw - 6,           y, pw, h);
         }
 
         void mouseDown (const juce::MouseEvent&) override
@@ -396,7 +400,7 @@ private:
     juce::OwnedArray<FileRow>            rows;
 
     juce::Label                          headerLabel { {}, "INPUT" };
-    juce::TextButton                     menuButton  { "\u2026" };   // "…"
+    juce::TextButton                     menuButton  { "..." };   // folder options menu
 
     // Drop-zone overlay shown while the user is dragging a Finder file
     // over the panel.  This is a child component (not drawn in paint())
@@ -429,9 +433,9 @@ private:
 
     bool dragHovered = false;
 
-    static constexpr int kRowH      = 56;   // matches HistoryComponent so 3-line rich rows fit
+    static constexpr int kRowH      = 70;   // matches HistoryComponent so 3-line rich rows fit
     static constexpr int kHeaderH   = 36;
-    static constexpr int kButtonH   = 22;
+    static constexpr int kButtonH   = 24;
 };
 
 } // namespace dawalka

@@ -9,20 +9,37 @@ public:
     HistoryRow (int rowIdx, const HistoryEntry& e,
                 std::function<void()> onSelect,
                 std::function<void()> onPlay,
-                std::function<void()> onDelete)
+                std::function<void()> onDelete,
+                std::function<void()> onPrompt)
         : index (rowIdx), entry (e),
           cbSelect (std::move (onSelect)),
           cbPlay   (std::move (onPlay)),
-          cbDelete (std::move (onDelete))
+          cbDelete (std::move (onDelete)),
+          cbPrompt (std::move (onPrompt))
     {
         addAndMakeVisible (playButton);
         playButton.setButtonText ("Play");
         playButton.setTooltip ("Play this clip in the plugin");
+        playButton.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (40, 44, 56));
+        playButton.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (220, 224, 240));
         playButton.onClick = [this] { if (cbPlay) cbPlay(); };
+
+        // Prompt-copy button — only meaningful for T2A entries (A2A
+        // entries have a meaningful prompt too, but the user's prompt
+        // editor is shared across modes, so we still expose it for
+        // both kinds — the prompt text is what gets copied).
+        addAndMakeVisible (promptButton);
+        promptButton.setButtonText ("Prompt");
+        promptButton.setTooltip ("Copy this prompt into the prompt field");
+        promptButton.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (40, 44, 56));
+        promptButton.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (220, 224, 240));
+        promptButton.onClick = [this] { if (cbPrompt) cbPrompt(); };
 
         addAndMakeVisible (deleteButton);
         deleteButton.setButtonText ("[x]");
         deleteButton.setTooltip ("Delete this clip (removes the WAV file too)");
+        deleteButton.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (40, 44, 56));
+        deleteButton.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (180, 184, 200));
         deleteButton.onClick = [this] { if (cbDelete) cbDelete(); };
     }
 
@@ -78,75 +95,86 @@ public:
     void paint (juce::Graphics& g) override
     {
         auto r = getLocalBounds();
+        const bool isA2A = (entry.kind == "a2a");
+        const auto accent = isA2A
+            ? juce::Colour::fromRGB (88, 198, 165)   // green for A2A
+            : juce::Colour::fromRGB (255, 122, 89); // orange for T2A
         auto bg = selected
-            ? juce::Colour::fromRGB (62, 72, 102)               // brighter blue
+            ? accent.withAlpha (0.18f)               // tinted bg matches the accent
             : (index % 2 == 0
-                ? juce::Colour::fromRGB (28, 31, 40)
-                : juce::Colour::fromRGB (24, 27, 35));
+                ? juce::Colour::fromRGB (26, 29, 38)
+                : juce::Colour::fromRGB (22, 25, 34));
         g.setColour (bg);
-        g.fillRect (r);
+        g.fillRoundedRectangle (r.toFloat(), 4.0f);
 
         // Subtle outer border on the selected row so it stands out
         // against the busy history list.
         if (selected)
         {
-            g.setColour (juce::Colour::fromRGB (255, 255, 255).withAlpha (0.18f));
-            g.drawRect (r.reduced (0, 1), 1);
+            g.setColour (accent.withAlpha (0.35f));
+            g.drawRoundedRectangle (r.toFloat().reduced (0.5f), 4.0f, 1.0f);
         }
 
         // Accent bar on the left — colour depends on the kind (T2A = orange,
         // A2A = green) so the user can tell generation types apart at a
         // glance in the OUTPUT list.  Wider when selected.
-        const bool isA2A = (entry.kind == "a2a");
-        const int accentW = selected ? 5 : 3;
-        g.setColour (selected
-            ? juce::Colours::white
-            : (isA2A
-                ? juce::Colour::fromRGB (88, 198, 165)   // green for A2A
-                : juce::Colour::fromRGB (255, 122, 89))); // orange for T2A
-        g.fillRect (r.removeFromLeft (accentW));
+        const int accentW = selected ? 4 : 3;
+        g.setColour (accent);
+        // Draw accent as a clipped rect on the left edge of the rounded row
+        {
+            juce::Path accentPath;
+            accentPath.addRectangle (r.getX(), r.getY(), accentW, r.getHeight());
+            g.fillPath (accentPath);
+        }
 
         // Title and meta in the area to the left of the buttons
-        auto textR = r.withX (r.getX() + 10)
-                       .withWidth (playButton.getX() - r.getX() - 12)
-                       .withY (r.getY() + 4)
-                       .withHeight (r.getHeight() - 8);
+        auto textR = r.withX (r.getX() + 12)
+                       .withWidth (playButton.getX() - r.getX() - 16)
+                       .withY (r.getY() + 5)
+                       .withHeight (r.getHeight() - 10);
 
         // Kind badge (top-left of the row, before the timestamp)
-        const int badgeW = 30;
-        auto badgeR = textR.removeFromLeft (badgeW).withHeight (16);
+        const int badgeW = 32;
+        auto badgeR = textR.removeFromLeft (badgeW).withHeight (17);
         g.setColour (isA2A
-            ? juce::Colour::fromRGB (88, 198, 165).withAlpha (0.20f)
-            : juce::Colour::fromRGB (255, 122, 89).withAlpha (0.20f));
-        g.fillRoundedRectangle (badgeR.toFloat(), 3.0f);
+            ? juce::Colour::fromRGB (88, 198, 165).withAlpha (0.18f)
+            : juce::Colour::fromRGB (255, 122, 89).withAlpha (0.18f));
+        g.fillRoundedRectangle (badgeR.toFloat(), 3.5f);
         g.setColour (isA2A
             ? juce::Colour::fromRGB (88, 198, 165)
             : juce::Colour::fromRGB (255, 122, 89));
-        g.setFont (juce::Font (9.5f, juce::Font::bold));
+        g.setFont (juce::Font (9.0f, juce::Font::bold));
         g.drawText (isA2A ? "A2A" : "T2A", badgeR,
                     juce::Justification::centred);
-        textR.removeFromLeft (4);  // gap between badge and text
+        textR.removeFromLeft (6);  // gap between badge and text
 
+        // Timestamp — aligned next to the badge
         g.setColour (selected
             ? juce::Colours::white
             : juce::Colour::fromRGB (235, 237, 245));
-        g.setFont (juce::Font (selected ? 12.5f : 12.0f, juce::Font::bold));
+        g.setFont (juce::Font (11.5f, juce::Font::bold));
         g.drawText (entry.timestamp.toString (false, true),
-                    textR.removeFromTop (16),
+                    textR.removeFromTop (17),
                     juce::Justification::centredLeft);
 
+        // Prompt snippet
         g.setColour (selected
             ? juce::Colour::fromRGB (210, 214, 230)
-            : juce::Colour::fromRGB (180, 184, 200));
-        g.setFont (juce::Font (11.0f));
-        g.drawText (entry.prompt.substring (0, 38),
-                    textR.removeFromTop (16),
-                    juce::Justification::centredLeft);
+            : juce::Colour::fromRGB (170, 174, 190));
+        g.setFont (juce::Font (10.5f));
+        auto promptLine = textR.removeFromTop (16);
+        // Truncate with ellipsis if needed
+        juce::String promptText = entry.prompt.substring (0, 42);
+        if (entry.prompt.length() > 42)
+            promptText += "...";
+        g.drawText (promptText.isEmpty() || promptText == "..." ? "(no prompt info)" : promptText,
+                    promptLine, juce::Justification::centredLeft);
 
+        // Metadata line
         g.setColour (selected
-            ? juce::Colour::fromRGB (200, 210, 230)
-            : juce::Colour::fromRGB (120, 124, 140));
-        g.setFont (juce::Font (10.0f));
+            ? juce::Colour::fromRGB (190, 200, 220)
+            : juce::Colour::fromRGB (110, 114, 130));
+        g.setFont (juce::Font (9.5f));
         const int srKHz = (entry.sampleRate + 500) / 1000;   // 44100 -> "44", 48000 -> "48"
         juce::String meta;
         if (isA2A)
@@ -154,15 +182,15 @@ public:
             juce::String src = entry.sourceFile.isNotEmpty()
                 ? juce::File (entry.sourceFile).getFileName()
                 : juce::String ("?");
-            meta = entry.modelId + "  -  from " + src
-                 + "  -  " + juce::String (entry.durationSec, 1) + "s"
-                 + "  -  " + juce::String (srKHz) + "kHz"
-                 + "  -  noise " + juce::String (entry.initNoiseLevel, 2);
+            meta = entry.modelId + "  \u2022  from " + src
+                 + "  \u2022  " + juce::String (entry.durationSec, 1) + "s"
+                 + "  \u2022  " + juce::String (srKHz) + "kHz"
+                 + "  \u2022  noise " + juce::String (entry.initNoiseLevel, 2);
         }
         else
         {
-            meta = entry.modelId + "  -  " + juce::String (entry.bpm) + " BPM  -  " +
-                   juce::String (entry.durationSec, 1) + "s  -  " +
+            meta = entry.modelId + "  \u2022  " + juce::String (entry.bpm) + " BPM  \u2022  " +
+                   juce::String (entry.durationSec, 1) + "s  \u2022  " +
                    juce::String (srKHz) + "kHz";
         }
         g.drawText (meta, textR, juce::Justification::centredLeft);
@@ -170,14 +198,16 @@ public:
 
     void resized() override
     {
-        auto r = getLocalBounds().reduced (8, 4);
-        int bw = 28;     // [x] button width
-        int pw = 48;     // Play button width
-        int h  = 22;
+        auto r = getLocalBounds().reduced (10, 6);
+        int bw = 30;     // [x] button width
+        int prw = 60;    // Prompt button width
+        int pw = 50;     // Play button width
+        int h  = 24;
         int y  = (r.getHeight() - h) / 2 + r.getY();
 
         deleteButton.setBounds (r.getRight() - bw,                    y, bw, h);
-        playButton.setBounds   (r.getRight() - bw - pw - 4,           y, pw, h);
+        promptButton.setBounds (r.getRight() - bw - prw - 6,          y, prw, h);
+        playButton.setBounds   (r.getRight() - bw - prw - pw - 12,    y, pw, h);
     }
 
     void mouseDown (const juce::MouseEvent&) override
@@ -198,9 +228,9 @@ public:
 
     int                                       index;
     HistoryEntry                              entry;
-    std::function<void()>                     cbSelect, cbPlay, cbDelete;
+    std::function<void()>                     cbSelect, cbPlay, cbDelete, cbPrompt;
     bool                                      selected = false;
-    juce::TextButton                          playButton, deleteButton;
+    juce::TextButton                          playButton, promptButton, deleteButton;
     // Non-owning back-pointer to the HistoryComponent that created
     // this row.  Lifetime matches the row (owned by the component's
     // OwnedArray).  Set in HistoryComponent::rebuild().
@@ -217,8 +247,8 @@ HistoryComponent::HistoryComponent (GenerationHistory& h)
     headerLabel.setJustificationType (juce::Justification::centredLeft);
 
     addAndMakeVisible (clearButton);
-    clearButton.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (60, 36, 40));
-    clearButton.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (255, 160, 150));
+    clearButton.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (44, 36, 38));
+    clearButton.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (255, 122, 89));
     clearButton.onClick = [this] { if (onClear) onClear(); };
 
     addAndMakeVisible (menuButton);
@@ -245,6 +275,7 @@ HistoryComponent::~HistoryComponent()
 void HistoryComponent::setOnSelectRequested (std::function<void (const HistoryEntry&)> cb) { onSelect = std::move (cb); }
 void HistoryComponent::setOnPlayRequested   (std::function<void (const HistoryEntry&)> cb) { onPlay   = std::move (cb); }
 void HistoryComponent::setOnDeleteRequested (std::function<void (const HistoryEntry&)> cb) { onDelete = std::move (cb); }
+void HistoryComponent::setOnPromptRequested (std::function<void (const HistoryEntry&)> cb) { onPrompt = std::move (cb); }
 void HistoryComponent::setOnClearRequested  (std::function<void()> cb)                     { onClear  = std::move (cb); }
 void HistoryComponent::setOnMenuRequested   (std::function<void()> cb)                     { onMenu   = std::move (cb); }
 
@@ -294,7 +325,8 @@ void HistoryComponent::rebuild()
         auto row = std::make_unique<HistoryRow> (i, e,
             [this, i] { if (onSelect  && i < entries.size()) onSelect  (entries.getReference (i)); },
             [this, i] { if (onPlay    && i < entries.size()) onPlay    (entries.getReference (i)); },
-            [this, i] { if (onDelete  && i < entries.size()) onDelete  (entries.getReference (i)); });
+            [this, i] { if (onDelete  && i < entries.size()) onDelete  (entries.getReference (i)); },
+            [this, i] { if (onPrompt  && i < entries.size()) onPrompt  (entries.getReference (i)); });
         row->setIndex (i);
         row->setSelected (i == selectedIndex);
         row->owner = this;   // back-pointer for mouseDown — see HistoryRow::mouseDown
@@ -336,12 +368,18 @@ void HistoryComponent::resized()
 void HistoryComponent::paint (juce::Graphics& g)
 {
     g.fillAll (juce::Colour::fromRGB (24, 27, 35));
+
+    // Orange accent bar on the left edge of the viewport area
+    auto vpBounds = viewport.getBounds();
+    g.setColour (juce::Colour::fromRGB (255, 122, 89));
+    g.fillRect (vpBounds.getX(), vpBounds.getY(), 3, vpBounds.getHeight());
+
     if (entries.isEmpty())
     {
         g.setColour (juce::Colour::fromRGB (120, 124, 140));
         g.setFont (juce::Font (12.0f));
         g.drawText ("History is empty\nGenerate audio to fill it",
-                    getLocalBounds(), juce::Justification::centred);
+                    getLocalBounds().reduced (8, 20), juce::Justification::centred);
     }
 }
 

@@ -15,6 +15,7 @@ public:
     void setOnSelectRequested (std::function<void (const HistoryEntry&)> cb);
     void setOnPlayRequested   (std::function<void (const HistoryEntry&)> cb);
     void setOnDeleteRequested (std::function<void (const HistoryEntry&)> cb);
+    void setOnPromptRequested (std::function<void (const HistoryEntry&)> cb);
     void setOnClearRequested  (std::function<void()> cb);
     void setOnMenuRequested   (std::function<void()> cb);   // popup menu (change output dir, etc.)
 
@@ -66,18 +67,19 @@ private:
     juce::OwnedArray<class HistoryRow>       rows;
 
     juce::TextButton                          clearButton { "CLEAR" };
-    juce::TextButton                          menuButton  { "\u2026" };   // "…" — opens the popup menu
+    juce::TextButton                          menuButton  { "..." };   // folder options menu
     juce::Label                               headerLabel { {}, "HISTORY" };
 
     std::function<void (const HistoryEntry&)> onSelect;
     std::function<void (const HistoryEntry&)> onPlay;
     std::function<void (const HistoryEntry&)> onDelete;
+    std::function<void (const HistoryEntry&)> onPrompt;
     std::function<void()>                     onClear;
     std::function<void()>                     onMenu;
 
-    static constexpr int kRowH       = 56;
+    static constexpr int kRowH       = 70;
     static constexpr int kHeaderH    = 36;
-    static constexpr int kButtonH    = 22;
+    static constexpr int kButtonH    = 24;
     static constexpr int kButtonGap  = 4;
 };
 

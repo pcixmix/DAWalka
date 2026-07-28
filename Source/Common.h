@@ -47,9 +47,8 @@ inline constexpr int  kDefaultDurationSeconds    = 8;
 inline constexpr const char* kDefaultPrompt         = "dark cinematic cello ostinato";
 inline constexpr int  kDefaultKeyRoot               = 1;       // C
 inline constexpr int  kDefaultKeyMode               = 1;       // Major
-inline constexpr bool kDefaultUseProjectBpm         = true;
+inline constexpr bool kDefaultUseProjectBpm         = false;
 inline constexpr int  kDefaultBpm                   = 120;
-inline constexpr bool kDefaultUseCustom             = false;
 inline constexpr int  kDefaultDurationUnit          = 1;       // 0 = seconds, 1 = bars
 inline constexpr int  kDefaultDurationBars          = 4;       // 4 bars @ 120bpm = 8 sec
 
@@ -127,8 +126,8 @@ inline constexpr int  kUiHeight                  = 720;
 inline constexpr int  kUiMinWidth                = 860;
 inline constexpr int  kUiMinHeight               = 760;
 inline constexpr int  kOuterPad                  = 16;
-inline constexpr int  kHeaderHeight              = 60;
-inline constexpr int  kModeTabHeight             = 36;
+inline constexpr int  kHeaderHeight              = 56;
+inline constexpr int  kModeTabHeight             = 40;
 
 inline constexpr const char* kModelsDirectory     = "DAWalka/models";
 inline constexpr const char* kHistoryFileName     = "history.json";
@@ -376,5 +375,12 @@ inline double barsToSeconds (int bars, double bpm)
 
 // Make uuid
 juce::String makeUuid();
+
+// Configure the standalone window for proper macOS appearance:
+//  - native title bar with traffic-light buttons (instead of JUCE's
+//    custom-drawn Windows-style close/minimise controls)
+// Pass the editor component so we can walk up to the TopLevelWindow.
+// No-op when running inside a host (AU / VST3).
+void fixStandaloneWindow (juce::Component* editor);
 
 } // namespace dawalka

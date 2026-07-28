@@ -31,6 +31,7 @@ APP_RES_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"                    # .../Resources
 APP_ROOT="$(cd "$APP_RES_DIR/.." && pwd)"                        # .../DAWalka.app
 BUNDLED_COMPONENT="$APP_RES_DIR/component/DAWalka.component"
 BUNDLED_VST3="$APP_RES_DIR/vst3/DAWalka.vst3"
+BUNDLED_STANDALONE="$APP_RES_DIR/standalone/DAWalka.app"
 BUNDLED_PYTHON_BACKEND="$APP_RES_DIR/python_backend"
 
 # Per-machine install state (shared with the developer's build.sh):
@@ -42,6 +43,7 @@ USER_AU_DIR="$HOME/Library/Audio/Plug-Ins/Components"
 INSTALL_PATH="$USER_AU_DIR/DAWalka.component"
 USER_VST3_DIR="$HOME/Library/Audio/Plug-Ins/VST3"
 VST3_INSTALL_PATH="$USER_VST3_DIR/DAWalka.vst3"
+STANDALONE_INSTALL_PATH="/Applications/DAWalka.app"
 
 # Pretty output
 if [[ -t 1 ]]; then
@@ -223,20 +225,48 @@ find_python_310() {
     return 1
 }
 
+# ─── CLI flags for selective installation ──────────────────────────────────
+INSTALL_AU=0
+INSTALL_VST3=0
+INSTALL_STANDALONE=0
+HAS_EXPLICIT_FLAG=0
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --au)           INSTALL_AU=1; HAS_EXPLICIT_FLAG=1; shift;;
+        --vst3)         INSTALL_VST3=1; HAS_EXPLICIT_FLAG=1; shift;;
+        --standalone)   INSTALL_STANDALONE=1; HAS_EXPLICIT_FLAG=1; shift;;
+        *)              warn "Unknown flag: $1"; shift;;
+    esac
+done
+
+# If no explicit flags, default to installing everything
+if [[ $HAS_EXPLICIT_FLAG -eq 0 ]]; then
+    INSTALL_AU=1
+    INSTALL_VST3=1
+    INSTALL_STANDALONE=1
+fi
+
 # ─── 0. Sanity check the .app bundle itself ────────────────────────────────
-if [[ ! -d "$BUNDLED_COMPONENT" ]]; then
-    fail "Pre-built component not found at: $BUNDLED_COMPONENT
+if [[ $INSTALL_AU -eq 1 && ! -d "$BUNDLED_COMPONENT" ]]; then
+    fail "Pre-built AU component not found at: $BUNDLED_COMPONENT
 
 This usually means the .app was created without first running build.sh
 or the install scripts in installer/ are missing.  Re-create the .app
 with installer/make_app.sh."
 fi
-if [[ ! -d "$BUNDLED_VST3" ]]; then
+if [[ $INSTALL_VST3 -eq 1 && ! -d "$BUNDLED_VST3" ]]; then
     fail "Pre-built VST3 not found at: $BUNDLED_VST3
 
 This usually means the .app was created without first running build.sh
 or the install scripts in installer/ are missing.  Re-create the .app
 with installer/make_app.sh."
+fi
+if [[ $INSTALL_STANDALONE -eq 1 && ! -d "$BUNDLED_STANDALONE" ]]; then
+    fail "Pre-built Standalone app not found at: $BUNDLED_STANDALONE
+
+This usually means the .app was created without first running build.sh.
+Re-create DAWalka.app with installer/make_app.sh."
 fi
 if [[ ! -d "$BUNDLED_PYTHON_BACKEND" ]]; then
     fail "Python backend not found at: $BUNDLED_PYTHON_BACKEND
@@ -247,8 +277,12 @@ fi
 banner
 hr
 printf "  ${DIM}App:${RESET}      %s\n" "$APP_ROOT"
-printf "  ${DIM}Plugin:${RESET}  %s\n" "$INSTALL_PATH"
 printf "  ${DIM}Python:${RESET}  %s\n" "$VENV_DIR"
+hr
+echo "  Components to install:"
+[[ $INSTALL_AU -eq 1 ]]          && echo "    [x] Audio Unit (AU) plugin" || echo "    [ ] Audio Unit (AU) plugin"
+[[ $INSTALL_VST3 -eq 1 ]]        && echo "    [x] VST3 plugin"            || echo "    [ ] VST3 plugin"
+[[ $INSTALL_STANDALONE -eq 1 ]]  && echo "    [x] Standalone app"         || echo "    [ ] Standalone app"
 hr
 echo
 
@@ -551,64 +585,106 @@ else
     ok "vendor/sa3_mlx already in place"
 fi
 
-# ─── 5. Install the pre-built plug-ins ─────────────────────────────────────
-step "5/5  Installing AU and VST3 plug-ins"
-mkdir -p "$USER_AU_DIR"
-mkdir -p "$USER_VST3_DIR"
+# ─── 5. Install the selected components ────────────────────────────────────
+step "5/5  Installing selected components"
 
-# Stop any running backend so the .component isn't locked
+# Stop any running backend so bundles aren't locked
 pkill -9 -f "DAWalka.*server.py" 2>/dev/null && ok "Backend stopped" || info "Backend not running"
 killall -9 "DAWalka Launcher" 2>/dev/null || true
 sleep 1
 
 # Also remove the old launcher if it was used (e.g. from a previous
-# dev build).  The .app's install path uses the .component's embedded
-# launcher, so the standalone one is no longer needed.
+# dev build).  The .app's install path uses the embedded launcher,
+# so the standalone one is no longer needed.
 rm -rf "$HOME/Applications/DAWalka Launcher.app" 2>/dev/null || true
 
-rm -rf "$INSTALL_PATH"
-rm -rf "$VST3_INSTALL_PATH"
-if ! cp -R "$BUNDLED_COMPONENT" "$USER_AU_DIR/"; then
-    fail "Failed to copy AU plugin to $USER_AU_DIR"
-fi
-if ! cp -R "$BUNDLED_VST3" "$USER_VST3_DIR/"; then
-    fail "Failed to copy VST3 plugin to $USER_VST3_DIR"
-fi
-if command -v codesign >/dev/null 2>&1; then
-    codesign --force --deep --sign - "$INSTALL_PATH" >/dev/null 2>&1 \
-        && ok "AU ad-hoc signature refreshed" \
-        || warn "Could not refresh AU ad-hoc signature"
-    codesign --force --deep --sign - "$VST3_INSTALL_PATH" >/dev/null 2>&1 \
-        && ok "VST3 ad-hoc signature refreshed" \
-        || warn "Could not refresh VST3 ad-hoc signature"
-fi
-ok "AU plugin installed: $INSTALL_PATH"
-ok "VST3 plugin installed: $VST3_INSTALL_PATH"
+# ─── AU plugin ──────────────────────────────────────────────────────────────
+if [[ $INSTALL_AU -eq 1 ]]; then
+    mkdir -p "$USER_AU_DIR"
+    rm -rf "$INSTALL_PATH"
+    if ! cp -R "$BUNDLED_COMPONENT" "$USER_AU_DIR/"; then
+        fail "Failed to copy AU plugin to $USER_AU_DIR"
+    fi
+    if command -v codesign >/dev/null 2>&1; then
+        codesign --force --deep --sign - "$INSTALL_PATH" >/dev/null 2>&1 \
+            && ok "AU ad-hoc signature refreshed" \
+            || warn "Could not refresh AU ad-hoc signature"
+    fi
+    ok "AU plugin installed: $INSTALL_PATH"
 
-# Re-register Audio Units
-killall -9 audiounitservicecrasher 2>/dev/null || true
-if command -v auval >/dev/null 2>&1; then
-    if run_auval_dawalka_check 20; then
-        ok "auval confirmed registration"
+    # Re-register Audio Units
+    killall -9 audiounitservicecrasher 2>/dev/null || true
+    if command -v auval >/dev/null 2>&1; then
+        if run_auval_dawalka_check 20; then
+            ok "auval confirmed registration"
+        else
+            case $? in
+                124)
+                    warn "auval took longer than 20 seconds - skipping so the installer can finish"
+                    ;;
+                *)
+                    warn "auval did not find DAWalka. Restart your DAW, or run:"
+                    warn "    auval -a | grep -i dawalka"
+                    ;;
+            esac
+        fi
     else
-        case $? in
-            124)
-                warn "auval took longer than 20 seconds - skipping so the installer can finish"
-                ;;
-            *)
-                warn "auval did not find DAWalka. Restart your DAW, or run:"
-                warn "    auval -a | grep -i dawalka"
-                ;;
-        esac
+        info "auval unavailable - skipping"
+    fi
+
+    if [[ -d "$INSTALL_PATH/Contents/Resources/python_backend" ]]; then
+        ok "AU bundle contains python_backend"
+    else
+        warn "AU bundle installed, but python_backend is missing"
     fi
 else
-    info "auval unavailable - skipping"
+    info "AU plugin: skipped (not selected)"
 fi
 
-if [[ -d "$VST3_INSTALL_PATH/Contents/Resources/python_backend" ]]; then
-    ok "VST3 bundle contains python_backend"
+# ─── VST3 plugin ────────────────────────────────────────────────────────────
+if [[ $INSTALL_VST3 -eq 1 ]]; then
+    mkdir -p "$USER_VST3_DIR"
+    rm -rf "$VST3_INSTALL_PATH"
+    if ! cp -R "$BUNDLED_VST3" "$USER_VST3_DIR/"; then
+        fail "Failed to copy VST3 plugin to $USER_VST3_DIR"
+    fi
+    if command -v codesign >/dev/null 2>&1; then
+        codesign --force --deep --sign - "$VST3_INSTALL_PATH" >/dev/null 2>&1 \
+            && ok "VST3 ad-hoc signature refreshed" \
+            || warn "Could not refresh VST3 ad-hoc signature"
+    fi
+    ok "VST3 plugin installed: $VST3_INSTALL_PATH"
+
+    if [[ -d "$VST3_INSTALL_PATH/Contents/Resources/python_backend" ]]; then
+        ok "VST3 bundle contains python_backend"
+    else
+        warn "VST3 bundle installed, but python_backend is missing"
+    fi
 else
-    warn "VST3 bundle installed, but python_backend is missing"
+    info "VST3 plugin: skipped (not selected)"
+fi
+
+# ─── Standalone app ────────────────────────────────────────────────────────
+if [[ $INSTALL_STANDALONE -eq 1 ]]; then
+    rm -rf "$STANDALONE_INSTALL_PATH"
+    if ! cp -R "$BUNDLED_STANDALONE" "/Applications/"; then
+        fail "Failed to copy Standalone app to /Applications/"
+    fi
+    if command -v codesign >/dev/null 2>&1; then
+        codesign --force --deep --sign - "$STANDALONE_INSTALL_PATH" >/dev/null 2>&1 \
+            && ok "Standalone ad-hoc signature refreshed" \
+            || warn "Could not refresh Standalone ad-hoc signature"
+    fi
+    xattr -cr "$STANDALONE_INSTALL_PATH" 2>/dev/null || true
+    ok "Standalone app installed: $STANDALONE_INSTALL_PATH"
+
+    if [[ -d "$STANDALONE_INSTALL_PATH/Contents/Resources/python_backend" ]]; then
+        ok "Standalone bundle contains python_backend"
+    else
+        warn "Standalone app installed, but python_backend is missing"
+    fi
+else
+    info "Standalone app: skipped (not selected)"
 fi
 
 # ─── Summary ───────────────────────────────────────────────────────────────
@@ -617,17 +693,34 @@ echo
 printf "  ${GREEN}${BOLD}\xe2\x9c\x93 DAWalka is ready to use!${RESET}\n"
 hr
 echo
-printf "  ${BOLD}AU plugin:${RESET}   %s\n" "$INSTALL_PATH"
-printf "  ${BOLD}VST3 plugin:${RESET} %s\n" "$VST3_INSTALL_PATH"
+
+if [[ $INSTALL_AU -eq 1 ]]; then
+    printf "  ${BOLD}AU plugin:${RESET}   %s\n" "$INSTALL_PATH"
+fi
+if [[ $INSTALL_VST3 -eq 1 ]]; then
+    printf "  ${BOLD}VST3 plugin:${RESET} %s\n" "$VST3_INSTALL_PATH"
+fi
+if [[ $INSTALL_STANDALONE -eq 1 ]]; then
+    printf "  ${BOLD}Standalone:${RESET}  %s\n" "$STANDALONE_INSTALL_PATH"
+fi
 printf "  ${BOLD}Python venv:${RESET} %s\n" "$VENV_DIR"
 printf "  ${BOLD}Models:${RESET}      %s (%s)\n" "$MODELS_DIR" "$(du -sh "$MODELS_DIR" 2>/dev/null | cut -f1 || echo ?)"
 echo
-printf "  ${BOLD}Next steps:${RESET}\n"
-printf "    1. Open ${BOLD}Logic, Reaper, Bitwig, Ableton, or another AU/VST3 host${RESET}\n"
-printf "    2. Create an instrument/generator track\n"
-printf "    3. Pick ${BOLD}DAWalka${RESET} from the AU or VST3 list\n"
-printf "    4. Type a prompt and press ${BOLD}GENERATE${RESET}\n"
-echo
+
+if [[ $INSTALL_STANDALONE -eq 1 ]]; then
+    printf "  ${BOLD}Next steps (Standalone):${RESET}\n"
+    printf "    1. Open ${BOLD}DAWalka.app from /Applications${RESET}\n"
+    printf "    2. Type a prompt and press ${BOLD}GENERATE${RESET}\n\n"
+fi
+
+if [[ $INSTALL_AU -eq 1 || $INSTALL_VST3 -eq 1 ]]; then
+    printf "  ${BOLD}Next steps (Plugin):${RESET}\n"
+    printf "    1. Open ${BOLD}Logic, Reaper, Bitwig, Ableton, or another host${RESET}\n"
+    printf "    2. Create an instrument/generator track\n"
+    printf "    3. Pick ${BOLD}DAWalka${RESET} from the plugin list\n"
+    printf "    4. Type a prompt and press ${BOLD}GENERATE${RESET}\n\n"
+fi
+
 hr
 echo
 

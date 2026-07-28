@@ -240,6 +240,7 @@ void PluginProcessor::jobFinished (const Job& job)
         if (job.kind == "a2a")
         {
             e.kind           = "a2a";
+            e.prompt         = job.a2aRequest.prompt;
             e.sourceFile     = job.a2aRequest.initAudio.getFullPathName();
             e.initNoiseLevel = job.a2aRequest.initNoiseLevel;
         }

@@ -15,6 +15,8 @@ ModelSelectorComponent::ModelSelectorComponent (ModelManager& m)
     folderButton.onClick = [this] { folderButtonClicked(); };
     folderButton.setButtonText ("...");
     folderButton.setTooltip ("Choose models folder");
+    folderButton.setColour (juce::TextButton::buttonColourId, juce::Colour::fromRGB (40, 44, 56));
+    folderButton.setColour (juce::TextButton::textColourOffId, juce::Colour::fromRGB (200, 204, 220));
 
     mm.addListener (this);
     refresh();
@@ -80,7 +82,7 @@ void ModelSelectorComponent::syncFromManager()
 
     for (auto& s : states)
     {
-        auto name = s.desc.displayName;
+        auto name = "Model / " + s.desc.displayName;
         if (s.status != ModelStatus::Ready)
             name += "  (" + modelStatusToString (s.status) + ")";
         selector.addItem (name, idx);
@@ -160,9 +162,7 @@ void ModelSelectorComponent::modelStateChanged (const ModelState&)
 
 void ModelSelectorComponent::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour::fromRGB (24, 27, 35));
-    g.setColour (juce::Colour::fromRGB (40, 44, 56));
-    g.drawRoundedRectangle (getLocalBounds().toFloat().reduced (0.5f), 6.0f, 1.0f);
+    // Transparent background — the combo box and folder button draw their own backgrounds
 
     // Update tooltip based on custom path
     auto customDir = mm.getCustomModelsDirectory();
@@ -174,15 +174,15 @@ void ModelSelectorComponent::paint (juce::Graphics& g)
 
 void ModelSelectorComponent::resized()
 {
-    // Layout: [status label] [combo fills the rest] [folder button]
-    auto r = getLocalBounds().reduced (8, 2);
-    int statusW = 90;
+    // Layout: [combo fills the rest] [folder button]
+    // Status is now shown externally by the editor's modelStatusLabel pill.
+    auto r = getLocalBounds().reduced (4, 2);
     int folderBtnW = 28;
-    statusLabel.setBounds (r.removeFromLeft (statusW));
-    r.removeFromLeft (4);
     folderButton.setBounds (r.removeFromRight (folderBtnW));
     r.removeFromRight (4);
     selector.setBounds (r);
+    // Keep statusLabel off-screen — it's managed externally now
+    statusLabel.setBounds (-200, -200, 0, 0);
 }
 
 void ModelSelectorComponent::folderButtonClicked()

@@ -55,6 +55,7 @@ private:
     void onT2aHistorySelect  (const HistoryEntry& e);
     void onT2aHistoryPlay    (const HistoryEntry& e);
     void onT2aHistoryDelete  (const HistoryEntry& e);
+    void onT2aHistoryPrompt  (const HistoryEntry& e);
     void onT2aHistoryClear();
     void showT2aHistoryMenu();
     void changeT2aOutputFolder();
@@ -107,6 +108,10 @@ private:
     void setDurationUnit (DurationUnit u);
     void updateDurationSliderForUnit();
     void updateDurationValueLabel();
+    // Refresh the BPM value label from the slider.  Called from the
+    // slider's onValueChange so the label updates immediately on drag,
+    // not on the 4 Hz timer tick.
+    void updateBpmValueLabel();
     // Effective duration in seconds, given the current state of the
     // duration controls.  Uses BPM from the slider or from the host
     // depending on useProjectBpm.
@@ -127,12 +132,36 @@ private:
     juce::Label                       backendStatusLabel;
     juce::Label                       chipLabel;
 
-    // Mode tabs (T2A | A2A) — placed just below the header
-    juce::TextButton                  modeTabT2a { "T2A   |   TEXT TO AUDIO" };
-    juce::TextButton                  modeTabA2a { "A2A   |   AUDIO TO AUDIO" };
+    // Mode tabs (T2A | A2A) — outlined + accent text when active
+    class ModeTabButton : public juce::TextButton
+    {
+    public:
+        using juce::TextButton::TextButton;
+
+        void paint (juce::Graphics& g) override
+        {
+            const bool down = isDown();
+            auto& lf = getLookAndFeel();
+            lf.drawButtonBackground (g, *this,
+                findColour (juce::TextButton::buttonColourId),
+                isMouseOver(), down);
+
+            g.setFont (static_cast<DAWalkaLookAndFeel&> (lf).getButtonFont (*this));
+            const auto textCol = down
+                ? juce::Colours::white
+                : findColour (juce::TextButton::textColourOffId);
+            g.setColour (textCol.withMultipliedAlpha (isEnabled() ? 1.0f : 0.5f));
+            g.drawText (getButtonText(), getLocalBounds().reduced (2),
+                        juce::Justification::centred, false);
+        }
+    };
+
+    ModeTabButton                     modeTabT2a { "T2A  |  TEXT TO AUDIO" };
+    ModeTabButton                     modeTabA2a { "A2A  |  AUDIO TO AUDIO" };
 
     // Model
     juce::Label                       modelLabel;
+    juce::Label                       modelStatusLabel;
     std::unique_ptr<ModelSelectorComponent> modelSelector;
 
     // Prompt
@@ -154,6 +183,7 @@ private:
     // Init-noise slider (A2A only — hidden in T2A)
     juce::Label                       initNoiseLabel;
     juce::Slider                      initNoiseSlider;
+    juce::TextEditor                  initNoiseTextBox;
     juce::Label                       initNoiseValueLabel;
     // Quick-pick noise presets above the slider (A2A only)
     juce::TextButton                  initNoisePresetSubtle   { "Subtle" };   // 0.30
@@ -215,6 +245,7 @@ private:
     juce::Label                       bpmLabel;
     juce::ToggleButton                useProjectBpm { "Use Project BPM" };
     juce::Slider                      bpmSlider;
+    juce::TextEditor                  bpmTextBox;
     juce::Label                       bpmValueLabel;
     juce::TextButton                  autoBpmButton  { "AUTO FROM PROJECT" };
 
@@ -224,12 +255,11 @@ private:
 
     // Duration
     juce::Label                       durationLabel;
-    juce::ToggleButton                useSelection   { "Use Selection Range" };
-    juce::ToggleButton                useCustom      { "Custom Duration" };
-    juce::TextButton                  unitSecButton  { "S" };
-    juce::TextButton                  unitBarButton  { "B" };
+    juce::TextButton                  unitSecButton  { "Seconds" };
+    juce::TextButton                  unitBarButton  { "Bar" };
     juce::Label                       customLabel;
     juce::Slider                      customSlider;
+    juce::TextEditor                  customTextBox;
     juce::Label                       customValueLabel;
 
     DurationUnit                      durationUnit   = DurationUnit::Seconds;

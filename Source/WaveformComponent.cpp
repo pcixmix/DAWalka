@@ -81,14 +81,19 @@ bool WaveformComponent::isPlaying() const
 void WaveformComponent::paint (juce::Graphics& g)
 {
     auto r = getLocalBounds();
-    g.fillAll (juce::Colour::fromRGB (16, 18, 24));
+    g.fillAll (juce::Colour::fromRGB (24, 27, 35));
+
+    // Subtle border around the waveform area
+    g.setColour (juce::Colour::fromRGB (40, 44, 56));
+    g.drawRoundedRectangle (r.toFloat().reduced (0.5f), 6.0f, 1.0f);
 
     if (thumbnail && thumbnail->getTotalLength() > 0.0)
     {
-        g.setColour (juce::Colour::fromRGB (40, 44, 56));
-        g.fillRoundedRectangle (r.toFloat().reduced (2.0f), 4.0f);
+        auto drawR = r.toFloat().reduced (6.0f, 8.0f);
+        g.setColour (juce::Colour::fromRGB (16, 18, 24));
+        g.fillRoundedRectangle (drawR, 4.0f);
         g.setColour (juce::Colour::fromRGB (255, 122, 89));
-        thumbnail->drawChannels (g, r.reduced (4), 0.0, thumbnail->getTotalLength(), 1.0f);
+        thumbnail->drawChannels (g, drawR.toNearestInt(), 0.0, thumbnail->getTotalLength(), 1.0f);
 
         // Playhead — prefer an externally-supplied position (used when
         // playback is driven by the audio processor, not by this
@@ -98,9 +103,10 @@ void WaveformComponent::paint (juce::Graphics& g)
         double total = thumbnail->getTotalLength();
         if (total > 0.0)
         {
-            float px = r.getX() + 4 + (r.getWidth() - 8) * static_cast<float> (pos / total);
+            auto drawR = r.toFloat().reduced (6.0f, 8.0f);
+            float px = drawR.getX() + (drawR.getWidth()) * static_cast<float> (pos / total);
             g.setColour (juce::Colours::white);
-            g.drawLine (px, r.getY() + 2, px, r.getBottom() - 2, 1.5f);
+            g.drawLine (px, drawR.getY(), px, drawR.getBottom(), 1.5f);
         }
     }
     else
@@ -108,7 +114,7 @@ void WaveformComponent::paint (juce::Graphics& g)
         g.setColour (juce::Colour::fromRGB (80, 84, 100));
         g.setFont (juce::Font (13.0f));
         g.drawText ("No audio yet - press Generate",
-                    r, juce::Justification::centred);
+                    r.reduced (12, 16), juce::Justification::centred);
     }
 }
 

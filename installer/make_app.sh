@@ -24,6 +24,10 @@
 #     │       │   └── uninstall.sh        # the "Uninstall" button
 #     │       ├── component/
 #     │       │   └── DAWalka.component   # pre-built AUv2
+#     │       ├── vst3/
+#     │       │   └── DAWalka.vst3        # pre-built VST3
+#     │       ├── standalone/
+#     │       │   └── DAWalka.app         # native standalone app
 #     │       └── python_backend/         # embedded by the C++ build
 #
 #  Requirements: build.sh has been run first (so build/AU/DAWalka.component
@@ -89,6 +93,7 @@ mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources/Scripts"
 mkdir -p "$APP_BUNDLE/Contents/Resources/component"
 mkdir -p "$APP_BUNDLE/Contents/Resources/vst3"
+mkdir -p "$APP_BUNDLE/Contents/Resources/standalone"
 mkdir -p "$APP_BUNDLE/Contents/Resources/python_backend"
 
 # ─── 1. Compile the Cocoa UI ──────────────────────────────────────────────
@@ -124,6 +129,14 @@ if [[ -d "$PROJECT_ROOT/build/VST3/DAWalka.vst3" ]]; then
     echo "    vst3/DAWalka.vst3  ($(du -sh "$APP_BUNDLE/Contents/Resources/vst3/DAWalka.vst3" | cut -f1))"
 else
     echo "WARNING: build/VST3/DAWalka.vst3 not found — VST3 will not be bundled" >&2
+fi
+
+if [[ -d "$PROJECT_ROOT/build/Standalone/DAWalka.app" ]]; then
+    cp -R "$PROJECT_ROOT/build/Standalone/DAWalka.app" \
+          "$APP_BUNDLE/Contents/Resources/standalone/"
+    echo "    standalone/DAWalka.app  ($(du -sh "$APP_BUNDLE/Contents/Resources/standalone/DAWalka.app" | cut -f1))"
+else
+    echo "WARNING: build/Standalone/DAWalka.app not found — Standalone will not be bundled" >&2
 fi
 
 # ─── 5. Python backend (everything except vendor/ which is huge) ──────────
@@ -210,6 +223,12 @@ echo "==> Ad-hoc code signing"
 if ! codesign --force --deep --sign - "$APP_BUNDLE" 2>&1; then
     echo "WARNING: codesign failed; the .app will still work but may need" >&2
     echo "         'xattr -dr com.apple.quarantine' on first launch." >&2
+fi
+
+# Also sign the bundled standalone app so it launches cleanly from /Applications
+if [[ -d "$APP_BUNDLE/Contents/Resources/standalone/DAWalka.app" ]]; then
+    codesign --force --deep --sign - \
+        "$APP_BUNDLE/Contents/Resources/standalone/DAWalka.app" 2>/dev/null || true
 fi
 
 # ─── summary ───────────────────────────────────────────────────────────────

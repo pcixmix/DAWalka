@@ -27,75 +27,112 @@ const char* kKeyNames[12] = {
 // is sent verbatim with no suffix.
 //
 // 60 instruments, organized by family for the dropdown.  JUCE 8's
-// ComboBox::addSectionalItem would let us group them visually, but a
-// flat alphabetical-ish list keeps the code dead-simple and renders
-// identically across JUCE versions.
+// Instrument categories — each section becomes a sub-menu in the combo box
+// popup. Item IDs are the 1-based index in the flat list, so
+// `soloInstrument.getSelectedId()` continues to map directly to
+// `kSoloInstruments[comboId - 1]` (see soloTag below).
+struct SoloCategory { const char* heading; std::initializer_list<const char*> items; };
+const SoloCategory kSoloCategories[] = {
+    { "Strings", {
+        "acoustic guitar", "acoustic bass", "banjo", "bass guitar", "cello",
+        "classical guitar", "double bass", "electric bass", "electric guitar",
+        "fiddle", "guitar", "harp", "koto", "lute", "mandolin",
+        "pedal steel guitar", "sitar", "steel guitar", "ukulele",
+        "upright bass", "viola", "violin", "viola da gamba"
+    }},
+    { "Woodwinds", {
+        "alto saxophone", "bagpipes", "bass clarinet", "bassoon", "clarinet",
+        "contrabass clarinet", "contrabassoon", "cor anglais", "english horn",
+        "flute", "oboe", "pan flute", "piccolo", "recorder", "saxophone",
+        "shakuhachi", "sopranino saxophone", "soprano saxophone",
+        "sopranino recorder", "subcontrabass saxophone", "tenor saxophone"
+    }},
+    { "Brass", {
+        "althorn", "baritone horn", "bugle", "cimbasso", "cornet",
+        "euphonium", "flugelhorn", "french horn", "helicon",
+        "mellophone", "ophicleide", "saxhorn", "sousaphone",
+        "tenor horn", "trombone", "trumpet", "tuba", "vuvuzela", "wagner tuba"
+    }},
+    { "Keyboards", {
+        "accordion", "celesta", "clavichord", "clavinet", "electronic organ",
+        "electric piano", "fender rhodes", "harmonium", "harpsichord",
+        "hammond organ", "keyboard", "mellotron", "minimoog", "organ",
+        "piano", "pipe organ", "spinet", "synth", "virginal", "wurlitzer"
+    }},
+    { "Percussion", {
+        "agogo", "bongos", "cajon", "cajon box", "chimes", "congas",
+        "cowbell", "darbuka", "drum kit", "frame drum",
+        "goblet drum", "hang drum", "hi-hat", "kick drum", "log drum",
+        "marimba", "metalophone", "snare drum", "steel drum",
+        "steelpan", "surdo", "tabla", "tambourine", "timpani",
+        "tom drum", "tubular bells", "vibraphone", "wood block",
+        "xylophone", "zills"
+    }},
+    { "Vocals", {
+        "alto vocal", "baritone vocal", "bass vocal", "choir",
+        "contralto vocal", "countertenor vocal", "female vocal",
+        "girl soprano", "hip hop vocal", "jazz vocal", "male vocal",
+        "mezzo soprano vocal", "operatic vocal", "pop vocal",
+        "rap vocal", "robotic vocal", "soprano vocal",
+        "spoken word", "tenor vocal", "whisper vocal", "yodeling"
+    }},
+    { "World & Misc", {
+        "alphorn", "appalachian dulcimer", "autoharp", "balalaika",
+        "bandoneon", "bazouki", "bouzouki", "charango", "cittern",
+        "concertina", "didgeridoo", "dulcimer", "erhu",
+        "fujara", "glass marimba", "glass harp", "gudok",
+        "guqin", "guzheng", "hang", "harmonica", "hurdy gurdy",
+        "jaw harp", "kalimba", "kantele", "lusheng",
+        "mbira", "nyckelharpa", "oud", "penny whistle", "psaltery",
+        "quena", "ruan", "sarod", "shamisen", "sho",
+        "steel tongue drum", "suona", "taiko", "tanpura",
+        "theremin", "uilleann pipes", "vibrato",
+        "waterphone", "xiao", "yangqin", "zither"
+    }}
+};
 const char* kSoloInstruments[] = {
-    // Strings (15)
-    "acoustic guitar",
-    "alto saxophone",
-    "bagpipes",
-    "banjo",
-    "bass guitar",
-    "cello",
-    "clarinet",
-    "classical guitar",
-    "double bass",
-    "electric guitar",
-    "flute",
-    "french horn",
-    "harmonica",
-    "harp",
-    "lute",
-    "mandolin",
-    "oboe",
-    "piccolo",
-    "recorder",
-    "saxophone",
-    "sitar",
-    "soprano saxophone",
-    "tenor saxophone",
-    "trombone",
-    "trumpet",
-    "tuba",
-    "ukulele",
-    "upright bass",
-    "viola",
-    "violin",
-    // Keys (10)
-    "accordion",
-    "celesta",
-    "clavinet",
-    "electric piano",
-    "harmonium",
-    "harpsichord",
-    "mellotron",
-    "organ",
-    "piano",
-    "synth",
-    // Percussion (8)
-    "bongos",
-    "cajon",
-    "congas",
-    "drum kit",
-    "marimba",
-    "tabla",
-    "timpani",
-    "vibraphone",
-    // Vocals (5)
-    "alto vocal",
-    "choir",
-    "female vocal",
-    "male vocal",
-    "soprano vocal",
-    // Other (7)
-    "didgeridoo",
-    "glockenspiel",
-    "kalimba",
-    "koto",
-    "oud",
-    "theremin",
-    "xylophone"
+    "acoustic guitar", "acoustic bass", "banjo", "bass guitar", "cello",
+    "classical guitar", "double bass", "electric bass", "electric guitar",
+    "fiddle", "guitar", "harp", "koto", "lute", "mandolin",
+    "pedal steel guitar", "sitar", "steel guitar", "ukulele",
+    "upright bass", "viola", "violin", "viola da gamba",
+    "alto saxophone", "bagpipes", "bass clarinet", "bassoon", "clarinet",
+    "contrabass clarinet", "contrabassoon", "cor anglais", "english horn",
+    "flute", "oboe", "pan flute", "piccolo", "recorder", "saxophone",
+    "shakuhachi", "sopranino saxophone", "soprano saxophone",
+    "sopranino recorder", "subcontrabass saxophone", "tenor saxophone",
+    "althorn", "baritone horn", "bugle", "cimbasso", "cornet",
+    "euphonium", "flugelhorn", "french horn", "helicon",
+    "mellophone", "ophicleide", "saxhorn", "sousaphone",
+    "tenor horn", "trombone", "trumpet", "tuba", "vuvuzela", "wagner tuba",
+    "accordion", "celesta", "clavichord", "clavinet", "electronic organ",
+    "electric piano", "fender rhodes", "harmonium", "harpsichord",
+    "hammond organ", "keyboard", "mellotron", "minimoog", "organ",
+    "piano", "pipe organ", "spinet", "synth", "virginal", "wurlitzer",
+    "agogo", "bongos", "cajon", "cajon box", "chimes", "congas",
+    "cowbell", "darbuka", "drum kit", "frame drum",
+    "goblet drum", "hang drum", "hi-hat", "kick drum", "log drum",
+    "marimba", "metalophone", "snare drum", "steel drum",
+    "steelpan", "surdo", "tabla", "tambourine", "timpani",
+    "tom drum", "tubular bells", "vibraphone", "wood block",
+    "xylophone", "zills",
+    "alto vocal", "baritone vocal", "bass vocal", "choir",
+    "contralto vocal", "countertenor vocal", "female vocal",
+    "girl soprano", "hip hop vocal", "jazz vocal", "male vocal",
+    "mezzo soprano vocal", "operatic vocal", "pop vocal",
+    "rap vocal", "robotic vocal", "soprano vocal",
+    "spoken word", "tenor vocal", "whisper vocal", "yodeling",
+    "alphorn", "appalachian dulcimer", "autoharp", "balalaika",
+    "bandoneon", "bazouki", "bouzouki", "charango", "cittern",
+    "concertina", "didgeridoo", "dulcimer", "erhu",
+    "fujara", "glass marimba", "glass harp", "gudok",
+    "guqin", "guzheng", "hang", "harmonica", "hurdy gurdy",
+    "jaw harp", "kalimba", "kantele", "lusheng",
+    "mbira", "nyckelharpa", "oud", "penny whistle", "psaltery",
+    "quena", "ruan", "sarod", "shamisen", "sho",
+    "steel tongue drum", "suona", "taiko", "tanpura",
+    "theremin", "uilleann pipes", "vibrato",
+    "waterphone", "xiao", "yangqin", "zither"
 };
 constexpr int kNumSoloInstruments = sizeof (kSoloInstruments) / sizeof (kSoloInstruments[0]);
 
@@ -229,18 +266,18 @@ void PluginEditor::loadFromSettings()
     keyMode.setSelectedId (s.getIntValue ("keyMode", kDefaultKeyMode), juce::dontSendNotification);
 
     // BPM
-    bool useProject = s.getBoolValue ("useProjectBpm", kDefaultUseProjectBpm);
-    useProjectBpm.setToggleState (useProject, juce::dontSendNotification);
+#ifndef IS_STANDALONE_BUILD
+    useProjectBpm.setToggleState (false, juce::dontSendNotification);
+    bpmSlider.setEnabled (true);
+#else
+    bpmSlider.setEnabled (true);
+#endif
     bpmSlider.setValue (s.getDoubleValue ("bpm", kDefaultBpm), juce::dontSendNotification);
-    bpmSlider.setEnabled (! useProject);
 
     // Duration
-    bool customEnabled = s.getBoolValue ("useCustom", kDefaultUseCustom);
-    useSelection.setToggleState (! customEnabled, juce::dontSendNotification);
-    useCustom.setToggleState (customEnabled, juce::dontSendNotification);
-    customSlider.setEnabled (customEnabled);
-    unitSecButton.setEnabled (customEnabled);
-    unitBarButton.setEnabled (customEnabled);
+    customSlider.setEnabled (true);
+    unitSecButton.setEnabled (true);
+    unitBarButton.setEnabled (true);
     durationUnit = s.getIntValue ("durationUnit", kDefaultDurationUnit) == 1
         ? DurationUnit::Bars : DurationUnit::Seconds;
     double defaultVal = (durationUnit == DurationUnit::Bars)
@@ -363,21 +400,22 @@ void PluginEditor::updateDurationSliderForUnit()
     {
         // Integer step 1..32.  The actual seconds value is computed
         // by getEffectiveDurationSec() from the current BPM.
-        customSlider.setRange (1.0, 32.0, 1.0);
+        customSlider.setRange (1.0, 128.0, 1.0);
         if (customSlider.getValue() < 1.0)  customSlider.setValue (kDefaultDurationBars);
-        if (customSlider.getValue() > 32.0) customSlider.setValue (32.0);
+        if (customSlider.getValue() > 128.0) customSlider.setValue (128.0);
     }
     else
     {
-        customSlider.setRange (1.0, 60.0, 1.0);
+        customSlider.setRange (1.0, 380.0, 1.0);
     }
-    // Recolour the unit buttons
-    auto activeCol   = lnf.accent;
-    auto inactiveCol = juce::Colour::fromRGB (50, 56, 78);
-    unitSecButton.setColour (juce::TextButton::buttonColourId,
-        durationUnit == DurationUnit::Seconds ? activeCol : inactiveCol);
-    unitBarButton.setColour (juce::TextButton::buttonColourId,
-        durationUnit == DurationUnit::Bars ? activeCol : inactiveCol);
+    // Recolour the unit buttons — active gets accent bg + white text, inactive gets dark bg
+    auto styleUnit = [this] (juce::TextButton& b, bool active)
+    {
+        b.getProperties().set ("active", active);
+        b.repaint();
+    };
+    styleUnit (unitSecButton, durationUnit == DurationUnit::Seconds);
+    styleUnit (unitBarButton, durationUnit == DurationUnit::Bars);
 }
 
 void PluginEditor::updateDurationValueLabel()
@@ -386,27 +424,34 @@ void PluginEditor::updateDurationValueLabel()
     {
         int bars = static_cast<int> (customSlider.getValue());
         customValueLabel.setText (juce::String (bars) + (bars == 1 ? " bar" : " bars"),
-                                  juce::dontSendNotification);
+                                   juce::dontSendNotification);
+        if (! customTextBox.hasKeyboardFocus (true))
+            customTextBox.setText (juce::String (bars), juce::dontSendNotification);
     }
     else
     {
         int sec = static_cast<int> (customSlider.getValue());
         customValueLabel.setText (juce::String (sec) + " sec",
-                                  juce::dontSendNotification);
+                                   juce::dontSendNotification);
+        if (! customTextBox.hasKeyboardFocus (true))
+            customTextBox.setText (juce::String (sec), juce::dontSendNotification);
     }
+}
+
+void PluginEditor::updateBpmValueLabel()
+{
+    const int bpmInt = static_cast<int> (bpmSlider.getValue());
+    bpmValueLabel.setText (juce::String (bpmInt) + " BPM", juce::dontSendNotification);
+    if (! bpmTextBox.hasKeyboardFocus (true))
+        bpmTextBox.setText (juce::String (bpmInt), juce::dontSendNotification);
 }
 
 double PluginEditor::getEffectiveDurationSec() const
 {
-    if (! useCustom.getToggleState())
-        return 0.0;   // use project selection — caller fills this in
-
     if (durationUnit == DurationUnit::Bars)
     {
         int bars = static_cast<int> (customSlider.getValue());
-        double bpm = useProjectBpm.getToggleState()
-            ? processor.getHostBpm()
-            : bpmSlider.getValue();
+        double bpm = bpmSlider.getValue();
         return barsToSeconds (bars, bpm);
     }
     return customSlider.getValue();
@@ -419,9 +464,10 @@ void PluginEditor::saveToSettings() const
     s.setValue ("prompt",        promptEditor.getText());
     s.setValue ("keyRoot",       keyRoot.getSelectedId());
     s.setValue ("keyMode",       keyMode.getSelectedId());
+#ifndef IS_STANDALONE_BUILD
     s.setValue ("useProjectBpm", useProjectBpm.getToggleState());
+#endif
     s.setValue ("bpm",           bpmSlider.getValue());
-    s.setValue ("useCustom",     useCustom.getToggleState());
     s.setValue ("duration",      customSlider.getValue());
     s.setValue ("durationUnit",  static_cast<int> (durationUnit));
     s.setValue ("modelId",       modelSelector->getSelectedId());
@@ -466,47 +512,48 @@ void PluginEditor::buildHeader()
 {
     addAndMakeVisible (headerTitle);
     headerTitle.setText ("DAWalka", juce::dontSendNotification);
-    headerTitle.setFont (juce::Font (22.0f, juce::Font::bold));
+    headerTitle.setFont (juce::Font (20.0f, juce::Font::bold));
     headerTitle.setColour (juce::Label::textColourId, lnf.text);
     headerTitle.setJustificationType (juce::Justification::topLeft);
 
     addAndMakeVisible (headerSubtitle);
     headerSubtitle.setText ("AI Audio Generator | Stable Audio 3 | Local",
-                             juce::dontSendNotification);
-    headerSubtitle.setFont (juce::Font (11.5f));
+                              juce::dontSendNotification);
+    headerSubtitle.setFont (juce::Font (11.0f));
     headerSubtitle.setColour (juce::Label::textColourId, lnf.textMuted);
     headerSubtitle.setJustificationType (juce::Justification::topLeft);
 
-    addAndMakeVisible (chipLabel);
-    chipLabel.setFont (juce::Font (10.5f));
-    chipLabel.setColour (juce::Label::textColourId, lnf.textMuted);
-    chipLabel.setJustificationType (juce::Justification::centredRight);
-
     addAndMakeVisible (backendStatusLabel);
-    backendStatusLabel.setFont (juce::Font (10.5f));
+    backendStatusLabel.setFont (juce::Font (10.0f));
     backendStatusLabel.setColour (juce::Label::textColourId, lnf.textMuted);
     backendStatusLabel.setJustificationType (juce::Justification::centredRight);
 
+    addAndMakeVisible (chipLabel);
+    chipLabel.setFont (juce::Font (10.0f));
+    chipLabel.setColour (juce::Label::textColourId, lnf.textMuted);
+    chipLabel.setJustificationType (juce::Justification::centredRight);
+
     auto rep = AppleSiliconDetector::detectBasic();
     if (rep.isAppleSilicon)
-        chipLabel.setText (rep.chipString + "  " +
-                           juce::String (rep.memBytes / 1'073'741'824) + " GB",
-                           juce::dontSendNotification);
+        chipLabel.setText (rep.chipString + " " +
+                            juce::String (rep.memBytes / 1'073'741'824) + " GB",
+                            juce::dontSendNotification);
     else
         chipLabel.setText ("Intel (no MLX)", juce::dontSendNotification);
 
     // ── Mode tabs (T2A | A2A) — placed in a row just below the header.
-    // Two equal-width full-height buttons side by side.  Active one gets
-    // the accent colour; inactive one is dark.
+    // Two equal-width buttons side by side with rounded backgrounds.
+    // Active tab gets white text + orange underline; inactive is muted.
     for (auto* b : { &modeTabT2a, &modeTabA2a })
     {
         addAndMakeVisible (*b);
-        b->setClickingTogglesState (false);
-        b->setColour (juce::TextButton::buttonColourId,   juce::Colour::fromRGB (32, 35, 46));
-        b->setColour (juce::TextButton::buttonOnColourId, lnf.accent);
+        b->setToggleState (false, juce::dontSendNotification);
+        b->setColour (juce::TextButton::buttonColourId,   lnf.surfaceAlt);
         b->setColour (juce::TextButton::textColourOffId,  lnf.textMuted);
-        b->setColour (juce::TextButton::textColourOnId,   juce::Colours::white);
+        b->setColour (juce::TextButton::textColourOnId,   lnf.accent);
+        b->getProperties().set ("outlined", true);
     }
+    modeTabT2a.setToggleState (true, juce::dontSendNotification);
     modeTabT2a.onClick = [this] { onModeTabClicked (Mode::T2A); };
     modeTabA2a.onClick = [this] { onModeTabClicked (Mode::A2A); };
 }
@@ -522,19 +569,9 @@ void PluginEditor::setMode (Mode newMode)
 {
     currentMode = newMode;
 
-    // Reflect in the tab buttons
-    {
-        auto active = juce::Colour::fromRGB (255, 122, 89);  // accent
-        auto inactive = juce::Colour::fromRGB (32, 35, 46);
-        modeTabT2a.setColour (juce::TextButton::buttonColourId,
-            currentMode == Mode::T2A ? active : inactive);
-        modeTabA2a.setColour (juce::TextButton::buttonColourId,
-            currentMode == Mode::A2A ? active : inactive);
-        modeTabT2a.setColour (juce::TextButton::textColourOffId,
-            currentMode == Mode::T2A ? juce::Colours::white : lnf.textMuted);
-        modeTabA2a.setColour (juce::TextButton::textColourOffId,
-            currentMode == Mode::A2A ? juce::Colours::white : lnf.textMuted);
-    }
+    // Reflect in the tab buttons — toggle state drives underline + text color
+    modeTabT2a.setToggleState (currentMode == Mode::T2A, juce::dontSendNotification);
+    modeTabA2a.setToggleState (currentMode == Mode::A2A, juce::dontSendNotification);
 
     // T2A-only widgets
     const bool t2a = (currentMode == Mode::T2A);
@@ -551,20 +588,22 @@ void PluginEditor::setMode (Mode newMode)
     keyRoot           .setVisible (t2a);
     keyMode           .setVisible (t2a);
     bpmLabel          .setVisible (t2a);
-    useProjectBpm     .setVisible (t2a);
-    bpmSlider         .setVisible (t2a);
-    bpmValueLabel     .setVisible (t2a);
+#ifndef IS_STANDALONE_BUILD
+    useProjectBpm     .setVisible (false);
+#endif
+    bpmSlider         .setVisible (false);
+    bpmTextBox        .setVisible (t2a);
+    bpmValueLabel     .setVisible (false);
     autoBpmButton     .setVisible (t2a);
     sampleRateLabel   .setVisible (t2a);
     sampleRateBox     .setVisible (t2a);
     durationLabel     .setVisible (t2a);
-    useSelection      .setVisible (t2a);
-    useCustom         .setVisible (t2a);
     unitSecButton     .setVisible (t2a);
     unitBarButton     .setVisible (t2a);
     customLabel       .setVisible (t2a);
-    customSlider      .setVisible (t2a);
-    customValueLabel  .setVisible (t2a);
+    customSlider      .setVisible (false);
+    customTextBox     .setVisible (t2a);
+    customValueLabel  .setVisible (false);
 
     // A2A-only widgets
     const bool a2a = (currentMode == Mode::A2A);
@@ -573,17 +612,16 @@ void PluginEditor::setMode (Mode newMode)
     a2aOutputPanelLabel.setVisible (a2a);
     a2aOutputList->setVisible (a2a);
     initNoiseLabel.setVisible (a2a);
-    initNoiseSlider.setVisible (a2a);
-    initNoiseValueLabel.setVisible (a2a);
+    initNoiseSlider.setVisible (false);
+    initNoiseTextBox.setVisible (a2a);
+    initNoiseValueLabel.setVisible (false);
     initNoisePresetSubtle.setVisible (a2a);
     initNoisePresetBalanced.setVisible (a2a);
     initNoisePresetCreative.setVisible (a2a);
-    // Solo-instrument row is SHARED between T2A and A2A.  In both
-    // modes the user can append "solo <instrument>" to the prompt;
-    // updateSoloEnabled() and the toggle's onClick handler gate
-    // the dropdown on the FX model.
-    soloToggle.setVisible (true);
-    soloInstrument.setVisible (true);
+    // Solo-instrument row is T2A-only — A2A has no "solo" concept
+    // (the model takes a verbatim prompt and the input audio).
+    soloToggle.setVisible (t2a);
+    soloInstrument.setVisible (t2a);
     // KEY/BPM tag toggles are T2A-only — A2A's prompt is verbatim,
     // no metadata tags to gate.
     tagsLabel           .setVisible (t2a);
@@ -691,6 +729,8 @@ void PluginEditor::updateInitNoiseValueLabel()
                         (v < 0.85f) ? "creative" : "regenerate";
     initNoiseValueLabel.setText (juce::String (v, 2) + "  (" + desc + ")",
                                   juce::dontSendNotification);
+    if (! initNoiseTextBox.hasKeyboardFocus (true))
+        initNoiseTextBox.setText (juce::String (v, 2), juce::dontSendNotification);
 
     // Highlight the quick-pick chip whose value is closest to the current
     // slider value (within 0.05).  Multiple chips may light up if the
@@ -702,10 +742,10 @@ void PluginEditor::updateInitNoiseValueLabel()
         bool active = std::abs (v - presetValue) < eps;
         b.setColour (juce::TextButton::buttonColourId,
             active ? juce::Colour::fromRGB (255, 122, 89)        // accent when active
-                   : juce::Colour::fromRGB (50, 56, 78));
+                    : juce::Colour::fromRGB (44, 48, 60));
         b.setColour (juce::TextButton::textColourOffId,
             active ? juce::Colours::white
-                   : juce::Colour::fromRGB (200, 204, 220));
+                    : juce::Colour::fromRGB (210, 214, 230));
     };
     highlight (initNoisePresetSubtle,   0.30f);
     highlight (initNoisePresetBalanced, 0.60f);
@@ -730,18 +770,55 @@ double PluginEditor::measureAudioSeconds (const juce::File& f) const
 void PluginEditor::buildMain()
 {
     // Section labels
+    // modelLabel is hidden — the "model / <name>" prefix is shown
+    // inside the selector itself (see ModelSelectorComponent::syncFromManager).
     modelLabel.setText ("MODEL", juce::dontSendNotification);
-    modelLabel.setFont (juce::Font (10.5f, juce::Font::bold));
+    modelLabel.setFont (juce::Font (10.0f, juce::Font::bold));
     modelLabel.setColour (juce::Label::textColourId, lnf.textMuted);
-    addAndMakeVisible (modelLabel);
+
+    // Model status pill ("Ready" / "Loading..." etc.) — hidden; the
+    // selector shows the status itself.  Kept as a member so the
+    // selection-changed callback can still update it without crashing.
+    modelStatusLabel.setFont (juce::Font (10.5f, juce::Font::bold));
+    modelStatusLabel.setJustificationType (juce::Justification::centred);
 
     // Model selector
     modelSelector = std::make_unique<ModelSelectorComponent> (processor.getModelManager());
     addAndMakeVisible (*modelSelector);
-    modelSelector->setOnSelectionChanged ([this] (const juce::String&) {
+
+    // Initialize the external status pill with a default value.  It will
+    // be updated by the selection-changed callback once a model is picked.
+    modelStatusLabel.setText ("Ready", juce::dontSendNotification);
+    modelStatusLabel.setColour (juce::Label::textColourId, juce::Colour::fromRGB (90, 220, 150));
+
+    modelSelector->setOnSelectionChanged ([this] (const juce::String& id) {
         updateGenerateButton();
         updateSoloEnabled();
         saveToSettings();
+        // Update the external status pill to match the selected model's state
+        auto states = processor.getModelManager().getStates();
+        for (auto& s : states)
+        {
+            if (s.desc.id == id)
+            {
+                juce::String status;
+                switch (s.status)
+                {
+                    case ModelStatus::Ready:        status = "Ready"; break;
+                    case ModelStatus::NotInstalled: status = "Not Installed"; break;
+                    case ModelStatus::Downloading:  status = juce::String ("Downloading ") + juce::String (static_cast<int> (s.progress * 100.0)) + "%"; break;
+                    case ModelStatus::Verifying:    status = "Verifying..."; break;
+                    case ModelStatus::Loading:      status = "Loading..."; break;
+                    case ModelStatus::Error:        status = "Error"; break;
+                }
+                modelStatusLabel.setText (status, juce::dontSendNotification);
+                modelStatusLabel.setColour (juce::Label::textColourId,
+                    s.status == ModelStatus::Ready     ? juce::Colour::fromRGB (90, 220, 150) :
+                    s.status == ModelStatus::Error     ? juce::Colour::fromRGB (255, 90, 100) :
+                                                         juce::Colour::fromRGB (235, 237, 245));
+                break;
+            }
+        }
     });
     modelSelector->setOnModelsDirChanged ([this] {
         // Models directory changed — restart backend to pick up new location
@@ -751,13 +828,13 @@ void PluginEditor::buildMain()
 
     // Prompt
     promptLabel.setText ("PROMPT", juce::dontSendNotification);
-    promptLabel.setFont (juce::Font (10.5f, juce::Font::bold));
+    promptLabel.setFont (juce::Font (10.0f, juce::Font::bold));
     promptLabel.setColour (juce::Label::textColourId, lnf.textMuted);
     addAndMakeVisible (promptLabel);
 
     addAndMakeVisible (promptEditor);
     promptEditor.setText (kDefaultPrompt);
-    promptEditor.setFont (juce::Font (13.5f));
+    promptEditor.setFont (juce::Font (12.5f));
     promptEditor.setMultiLine (true);
     promptEditor.setReturnKeyStartsNewLine (false);
     promptEditor.onTextChange = [this] {
@@ -774,9 +851,9 @@ void PluginEditor::buildMain()
     // T2A and A2A.
     addAndMakeVisible (randomMusicPromptButton);
     randomMusicPromptButton.setColour (juce::TextButton::buttonColourId,
-        juce::Colour::fromRGB (54, 60, 82));
+        juce::Colour::fromRGB (44, 48, 60));
     randomMusicPromptButton.setColour (juce::TextButton::textColourOffId,
-        juce::Colour::fromRGB (225, 229, 245));
+        juce::Colour::fromRGB (210, 214, 230));
     randomMusicPromptButton.setTooltip (
         "Generate a random MUSIC prompt for the current mode");
     randomMusicPromptButton.onClick = [this] { onRandomMusicClicked(); };
@@ -788,9 +865,9 @@ void PluginEditor::buildMain()
     // category can be added later if needed).
     addAndMakeVisible (randomSfxPromptButton);
     randomSfxPromptButton.setColour (juce::TextButton::buttonColourId,
-        juce::Colour::fromRGB (54, 60, 82));
+        juce::Colour::fromRGB (44, 48, 60));
     randomSfxPromptButton.setColour (juce::TextButton::textColourOffId,
-        juce::Colour::fromRGB (225, 229, 245));
+        juce::Colour::fromRGB (210, 214, 230));
     randomSfxPromptButton.setTooltip (
         "Generate a random SFX prompt (T2A only).  "
         "Best paired with the SFX model.");
@@ -816,8 +893,14 @@ void PluginEditor::buildMain()
     };
 
     addAndMakeVisible (soloInstrument);
-    for (int i = 0; i < kNumSoloInstruments; ++i)
-        soloInstrument.addItem (kSoloInstruments[i], i + 1);
+    int nextId = 1;
+    for (const auto& cat : kSoloCategories)
+    {
+        juce::PopupMenu sub;
+        for (const char* name : cat.items)
+            sub.addItem (nextId++, name);
+        soloInstrument.getRootMenu()->addSubMenu (cat.heading, sub);
+    }
     soloInstrument.setTextWhenNothingSelected ("Pick an instrument...");
     soloInstrument.setSelectedId (0, juce::dontSendNotification);
     soloInstrument.setEnabled (false);  // off until toggle is on
@@ -832,9 +915,9 @@ void PluginEditor::buildMain()
     // "Include KEY / BPM in prompt" — see PluginEditor.h for the full
     // rationale.  Both default ON.  Hidden in A2A by setMode().
     addAndMakeVisible (tagsLabel);
-    tagsLabel.setFont (juce::Font (10.5f, juce::Font::bold));
+    tagsLabel.setFont (juce::Font (10.0f, juce::Font::bold));
     tagsLabel.setColour (juce::Label::textColourId, lnf.textMuted);
-    tagsLabel.setJustificationType (juce::Justification::centredRight);
+    tagsLabel.setJustificationType (juce::Justification::centredLeft);
     tagsLabel.setTooltip (
         "Tags appended to the prompt that bias the model toward tonal, "
         "rhythmic output.  Untick one or both when using a music model "
@@ -877,17 +960,39 @@ void PluginEditor::buildMain()
     // Init-noise slider (A2A only — hidden in T2A by setMode())
     addAndMakeVisible (initNoiseLabel);
     initNoiseLabel.setText ("INIT NOISE", juce::dontSendNotification);
-    initNoiseLabel.setFont (juce::Font (10.5f, juce::Font::bold));
+    initNoiseLabel.setFont (juce::Font (10.0f, juce::Font::bold));
     initNoiseLabel.setColour (juce::Label::textColourId, lnf.textMuted);
     addAndMakeVisible (initNoiseSlider);
     initNoiseSlider.setRange (0.0, 1.0, 0.01);
     initNoiseSlider.setValue (0.7);
     initNoiseSlider.setSliderStyle (juce::Slider::LinearHorizontal);
+    initNoiseSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, false); // hide built-in text box
     initNoiseSlider.setTextValueSuffix ("");
     initNoiseSlider.onValueChange = [this] { updateInitNoiseValueLabel(); saveToSettings(); };
+
+    // Init-noise text box — direct numeric entry, same styling as bpmTextBox.
+    initNoiseTextBox.setFont (juce::Font (12.0f));
+    initNoiseTextBox.setColour (juce::TextEditor::textColourId, lnf.text);
+    initNoiseTextBox.setColour (juce::TextEditor::backgroundColourId, lnf.surface);
+    initNoiseTextBox.setColour (juce::TextEditor::outlineColourId, lnf.surfaceAlt.brighter (0.2f));
+    initNoiseTextBox.setColour (juce::TextEditor::focusedOutlineColourId, lnf.accent);
+    initNoiseTextBox.setIndents (0, 0);
+    initNoiseTextBox.setJustification (juce::Justification::centred);
+    initNoiseTextBox.onReturnKey = [this] {
+        const float val = juce::jlimit (0.0f, 1.0f, initNoiseTextBox.getText().getFloatValue());
+        initNoiseSlider.setValue (static_cast<double> (val), juce::sendNotification);
+    };
+    initNoiseTextBox.setText (juce::String (static_cast<float> (initNoiseSlider.getValue()), 2), juce::dontSendNotification);
+    addAndMakeVisible (initNoiseTextBox);
+
     addAndMakeVisible (initNoiseValueLabel);
     initNoiseValueLabel.setFont (juce::Font (11.5f));
+#ifdef IS_STANDALONE_BUILD
+    initNoiseValueLabel.setColour (juce::Label::textColourId, lnf.textMuted);
+#else
     initNoiseValueLabel.setColour (juce::Label::textColourId, lnf.text);
+#endif
+    initNoiseValueLabel.setJustificationType (juce::Justification::centredLeft);
 
     // Quick-pick noise preset chips.  Hovering/clicking sets the slider
     // to a known good value; the active preset (whichever is closest to
@@ -897,9 +1002,9 @@ void PluginEditor::buildMain()
         addAndMakeVisible (b);
         b.setTooltip (tip);
         b.setColour (juce::TextButton::buttonColourId,
-                     juce::Colour::fromRGB (50, 56, 78));
+                      juce::Colour::fromRGB (44, 48, 60));
         b.setColour (juce::TextButton::textColourOffId,
-                     juce::Colour::fromRGB (200, 204, 220));
+                      juce::Colour::fromRGB (210, 214, 230));
     };
     presetStyle (initNoisePresetSubtle,
                  "Subtle transformation — preserves most of the input character (σmax = 0.30)");
@@ -921,7 +1026,7 @@ void PluginEditor::buildMain()
 
     // Key
     keyLabel.setText ("KEY", juce::dontSendNotification);
-    keyLabel.setFont (juce::Font (10.5f, juce::Font::bold));
+    keyLabel.setFont (juce::Font (10.0f, juce::Font::bold));
     keyLabel.setColour (juce::Label::textColourId, lnf.textMuted);
     addAndMakeVisible (keyLabel);
 
@@ -939,37 +1044,72 @@ void PluginEditor::buildMain()
 
     // BPM
     bpmLabel.setText ("TEMPO", juce::dontSendNotification);
-    bpmLabel.setFont (juce::Font (10.5f, juce::Font::bold));
+    bpmLabel.setFont (juce::Font (10.0f, juce::Font::bold));
     bpmLabel.setColour (juce::Label::textColourId, lnf.textMuted);
     addAndMakeVisible (bpmLabel);
 
+#ifndef IS_STANDALONE_BUILD
     addAndMakeVisible (useProjectBpm);
     useProjectBpm.setToggleState (kDefaultUseProjectBpm, juce::dontSendNotification);
+    useProjectBpm.setColour (juce::ToggleButton::textColourId, lnf.textMuted);
+    useProjectBpm.setColour (juce::ToggleButton::tickColourId, lnf.accent);
+    useProjectBpm.setColour (juce::ToggleButton::tickDisabledColourId, juce::Colour::fromRGB (90, 95, 115));
     useProjectBpm.onClick = [this] {
         bpmSlider.setEnabled (!useProjectBpm.getToggleState());
         if (useProjectBpm.getToggleState())
             updateFromHost();
         saveToSettings();
     };
+#endif
 
     bpmSlider.setRange (40.0, 240.0, 1.0);
     bpmSlider.setValue (kDefaultBpm);
+#ifdef IS_STANDALONE_BUILD
+    bpmSlider.setEnabled (true);
+#else
     bpmSlider.setEnabled (!kDefaultUseProjectBpm);
+#endif
     bpmSlider.setSliderStyle (juce::Slider::LinearHorizontal);
-    bpmSlider.setTextValueSuffix (" BPM");
-    bpmSlider.onValueChange = [this] { saveToSettings(); };
+    bpmSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, false); // hide built-in text box
+    bpmSlider.onValueChange = [this] { saveToSettings(); updateBpmValueLabel(); };
     addAndMakeVisible (bpmSlider);
+
+    // BPM input text box — custom TextEditor for reliable editing
+    bpmTextBox.setFont (juce::Font (12.0f));
+    bpmTextBox.setColour (juce::TextEditor::textColourId, lnf.text);
+    bpmTextBox.setColour (juce::TextEditor::backgroundColourId, lnf.surface);
+    bpmTextBox.setColour (juce::TextEditor::outlineColourId, lnf.surfaceAlt.brighter (0.2f));
+    bpmTextBox.setColour (juce::TextEditor::focusedOutlineColourId, lnf.accent);
+    bpmTextBox.setIndents (0, 0);
+    bpmTextBox.setJustification (juce::Justification::centred);
+    auto applyBpmFromBox = [this] {
+        int val = bpmTextBox.getText().getIntValue();
+        if (val >= 40 && val <= 240)
+            bpmSlider.setValue (static_cast<double> (val));
+        saveToSettings();
+    };
+    bpmTextBox.onReturnKey = applyBpmFromBox;
+    // Initialize with current BPM value
+    bpmTextBox.setText (juce::String (static_cast<int> (bpmSlider.getValue())), juce::dontSendNotification);
+    addAndMakeVisible (bpmTextBox);
 
     addAndMakeVisible (bpmValueLabel);
     bpmValueLabel.setFont (juce::Font (11.5f));
+#ifdef IS_STANDALONE_BUILD
+    bpmValueLabel.setColour (juce::Label::textColourId, lnf.textMuted);
+#else
     bpmValueLabel.setColour (juce::Label::textColourId, lnf.text);
+#endif
+    bpmValueLabel.setJustificationType (juce::Justification::centredLeft);
+    updateBpmValueLabel();
 
     // Sample-rate selector — affects the WAV file the Python backend
     // writes.  Default picks up the host's current project rate the
     // first time the plugin opens.
     sampleRateLabel.setText ("SR", juce::dontSendNotification);
-    sampleRateLabel.setFont (juce::Font (10.5f, juce::Font::bold));
+    sampleRateLabel.setFont (juce::Font (10.0f, juce::Font::bold));
     sampleRateLabel.setColour (juce::Label::textColourId, lnf.textMuted);
+    sampleRateLabel.setJustificationType (juce::Justification::centredRight);
     addAndMakeVisible (sampleRateLabel);
     sampleRateBox.addItem ("44.1 kHz", 1);
     sampleRateBox.addItem ("48 kHz",   2);
@@ -978,56 +1118,65 @@ void PluginEditor::buildMain()
 
     // Duration
     durationLabel.setText ("DURATION", juce::dontSendNotification);
-    durationLabel.setFont (juce::Font (10.5f, juce::Font::bold));
+    durationLabel.setFont (juce::Font (10.0f, juce::Font::bold));
     durationLabel.setColour (juce::Label::textColourId, lnf.textMuted);
     addAndMakeVisible (durationLabel);
 
-    addAndMakeVisible (useSelection);
-    useSelection.setToggleState (!kDefaultUseCustom, juce::dontSendNotification);
-    useSelection.onClick = [this] {
-        useCustom.setToggleState (false, juce::dontSendNotification);
-        unitSecButton.setEnabled (false);
-        unitBarButton.setEnabled (false);
-        customSlider.setEnabled (false);
-        saveToSettings();
+    // SEC | BAR segmented control — pill-style buttons
+    auto styleUnitButton = [this] (juce::TextButton& b, bool active)
+    {
+        b.setColour (juce::TextButton::buttonColourId,
+            active ? lnf.accent : juce::Colour::fromRGB (50, 56, 78));
+        b.setColour (juce::TextButton::textColourOffId,
+            active ? juce::Colours::white : juce::Colour::fromRGB (200, 204, 220));
     };
-    addAndMakeVisible (useCustom);
-    useCustom.onClick = [this] {
-        useSelection.setToggleState (false, juce::dontSendNotification);
-        unitSecButton.setEnabled (true);
-        unitBarButton.setEnabled (true);
-        customSlider.setEnabled (true);
-        updateDurationSliderForUnit();
-        saveToSettings();
-    };
-
-    // SEC | BAR segmented control
     unitSecButton.setClickingTogglesState (false);
     unitBarButton.setClickingTogglesState (false);
     unitSecButton.onClick = [this] { setDurationUnit (DurationUnit::Seconds); };
     unitBarButton.onClick = [this] { setDurationUnit (DurationUnit::Bars);    };
-    unitSecButton.setEnabled (kDefaultUseCustom);
-    unitBarButton.setEnabled (kDefaultUseCustom);
     addAndMakeVisible (unitSecButton);
     addAndMakeVisible (unitBarButton);
 
-    customSlider.setRange (1.0, 60.0, 1.0);
+    customSlider.setRange (1.0, 380.0, 1.0);
     customSlider.setValue (kDefaultDurationSeconds);
     customSlider.setSliderStyle (juce::Slider::LinearHorizontal);
-    customSlider.setEnabled (kDefaultUseCustom);
+    customSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, false);
+    customSlider.setEnabled (true);
     customSlider.onValueChange = [this] { saveToSettings(); updateDurationValueLabel(); };
     addAndMakeVisible (customSlider);
+
+    // Custom duration text box — allows direct number entry
+    customTextBox.setFont (juce::Font (12.0f));
+    customTextBox.setColour (juce::TextEditor::textColourId, lnf.text);
+    customTextBox.setColour (juce::TextEditor::backgroundColourId, lnf.surface);
+    customTextBox.setColour (juce::TextEditor::outlineColourId, lnf.surfaceAlt.brighter (0.2f));
+    customTextBox.setColour (juce::TextEditor::focusedOutlineColourId, lnf.accent);
+    customTextBox.setIndents (0, 0);
+    customTextBox.setJustification (juce::Justification::centred);
+    auto applyDurationFromBox = [this] {
+        int val = customTextBox.getText().getIntValue();
+        int maxV = (durationUnit == DurationUnit::Bars) ? 128 : 380;
+        if (val >= 1 && val <= maxV)
+            customSlider.setValue (static_cast<double> (val), juce::sendNotification);
+    };
+    customTextBox.onReturnKey = applyDurationFromBox;
+    customTextBox.onFocusLost = applyDurationFromBox;
+    customTextBox.setText (juce::String (static_cast<int> (customSlider.getValue())), juce::dontSendNotification);
+    addAndMakeVisible (customTextBox);
+
     addAndMakeVisible (customValueLabel);
     customValueLabel.setFont (juce::Font (11.5f));
-    customValueLabel.setColour (juce::Label::textColourId, lnf.text);
+    customValueLabel.setColour (juce::Label::textColourId, lnf.textMuted);
+    customValueLabel.setJustificationType (juce::Justification::centredLeft);
     updateDurationValueLabel();
 
-    // Generate - prominent button
+    // Generate - prominent outlined button (dark bg + orange border/text)
     addAndMakeVisible (generateButton);
-    generateButton.setColour (juce::TextButton::buttonColourId, lnf.accent);
-    generateButton.setColour (juce::TextButton::buttonOnColourId, lnf.accent);
-    generateButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
-    generateButton.setColour (juce::TextButton::textColourOnId, juce::Colours::white);
+    generateButton.setColour (juce::TextButton::buttonColourId, lnf.surfaceAlt);
+    generateButton.setColour (juce::TextButton::buttonOnColourId, lnf.surfaceAlt);
+    generateButton.setColour (juce::TextButton::textColourOffId, lnf.accent);
+    generateButton.setColour (juce::TextButton::textColourOnId, lnf.accent);
+    generateButton.getProperties().set ("outlined", true);
     generateButton.onClick = [this] { generateClicked(); };
 
     // Waveform + transport
@@ -1044,17 +1193,28 @@ void PluginEditor::buildMain()
     };
 
     addAndMakeVisible (playButton);
+    playButton.setButtonText ("Play");
+    playButton.setColour (juce::TextButton::buttonColourId, lnf.surfaceAlt);
+    playButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
     playButton.onClick = [this] { playClicked(); };
     addAndMakeVisible (stopButton);
+    stopButton.setButtonText ("Stop");
+    stopButton.setColour (juce::TextButton::buttonColourId, lnf.surfaceAlt);
+    stopButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
     stopButton.onClick = [this] { stopClicked(); };
     addAndMakeVisible (loopButton);
     loopButton.setToggleState (true, juce::dontSendNotification);
+    loopButton.setColour (juce::ToggleButton::textColourId, lnf.textMuted);
+    loopButton.setColour (juce::ToggleButton::tickColourId, lnf.accent);
     loopButton.onClick = [this] { loopToggled(); };
     addAndMakeVisible (saveWavButton);
+    saveWavButton.setColour (juce::TextButton::buttonColourId, lnf.surfaceAlt);
+    saveWavButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
     saveWavButton.onClick = [this] { saveWavClicked(); };
 
     addAndMakeVisible (copyToClipboardButton);
-    copyToClipboardButton.setColour (juce::TextButton::buttonColourId, lnf.accent);
+    copyToClipboardButton.setButtonText ("Copy to Clipboard");
+    copyToClipboardButton.setColour (juce::TextButton::buttonColourId, lnf.surfaceAlt);
     copyToClipboardButton.setColour (juce::TextButton::textColourOffId, juce::Colours::white);
     copyToClipboardButton.onClick = [this] { copyToClipboardClicked(); };
 
@@ -1068,7 +1228,7 @@ void PluginEditor::buildT2aHistoryPanel()
 {
     addAndMakeVisible (t2aHistoryLabel);
     t2aHistoryLabel.setText ("T2A folder", juce::dontSendNotification);
-    t2aHistoryLabel.setFont (juce::Font (10.5f, juce::Font::bold));
+    t2aHistoryLabel.setFont (juce::Font (10.0f, juce::Font::bold));
     t2aHistoryLabel.setColour (juce::Label::textColourId, lnf.textMuted);
 
     t2aHistory = std::make_unique<HistoryComponent> (processor.getHistory());
@@ -1076,6 +1236,7 @@ void PluginEditor::buildT2aHistoryPanel()
     t2aHistory->setOnSelectRequested  ([this] (const HistoryEntry& e) { onT2aHistorySelect  (e); });
     t2aHistory->setOnPlayRequested    ([this] (const HistoryEntry& e) { onT2aHistoryPlay    (e); });
     t2aHistory->setOnDeleteRequested  ([this] (const HistoryEntry& e) { onT2aHistoryDelete  (e); });
+    t2aHistory->setOnPromptRequested  ([this] (const HistoryEntry& e) { onT2aHistoryPrompt  (e); });
     t2aHistory->setOnClearRequested   ([this]                          { onT2aHistoryClear   (); });
     t2aHistory->setOnMenuRequested    ([this]                          { showT2aHistoryMenu  (); });
 }
@@ -1112,7 +1273,7 @@ void PluginEditor::buildA2aPanels()
     // on the history with a2aOutputDir when entering A2A mode.
     addAndMakeVisible (a2aOutputPanelLabel);
     a2aOutputPanelLabel.setText ("A2A folder", juce::dontSendNotification);
-    a2aOutputPanelLabel.setFont (juce::Font (10.5f, juce::Font::bold));
+    a2aOutputPanelLabel.setFont (juce::Font (10.0f, juce::Font::bold));
     a2aOutputPanelLabel.setColour (juce::Label::textColourId, lnf.textMuted);
 
     // INPUT panel label (top of the A2A side column).  Reads from
@@ -1120,7 +1281,7 @@ void PluginEditor::buildA2aPanels()
     // in the new layout.
     addAndMakeVisible (a2aInputPanelLabel);
     a2aInputPanelLabel.setText ("T2A folder", juce::dontSendNotification);
-    a2aInputPanelLabel.setFont (juce::Font (10.5f, juce::Font::bold));
+    a2aInputPanelLabel.setFont (juce::Font (10.0f, juce::Font::bold));
     a2aInputPanelLabel.setColour (juce::Label::textColourId, lnf.textMuted);
 
     a2aOutputList = std::make_unique<HistoryComponent> (processor.getHistory());
@@ -1128,6 +1289,7 @@ void PluginEditor::buildA2aPanels()
     a2aOutputList->setOnSelectRequested ([this] (const HistoryEntry& e) { onA2aOutputSelect (e); });
     a2aOutputList->setOnPlayRequested   ([this] (const HistoryEntry& e) { onA2aOutputPlay   (e); });
     a2aOutputList->setOnDeleteRequested ([this] (const HistoryEntry& e) { onA2aOutputDelete (e); });
+    a2aOutputList->setOnPromptRequested ([this] (const HistoryEntry& e) { onT2aHistoryPrompt (e); });
     a2aOutputList->setOnClearRequested  ([this]                          { onA2aOutputClear  (); });
     a2aOutputList->setOnMenuRequested   ([this]                          { showA2aOutputMenu (); });
 }
@@ -1148,6 +1310,11 @@ void PluginEditor::visibilityChanged()
     if (! isVisible())
         return;
 
+    // Fix standalone window: native title bar + hide info bar.
+#if JucePlugin_Build_Standalone
+    fixStandaloneWindow (this);
+#endif
+
     // Some AU hosts open the editor at a 0x0 (or remembered-last) size
     // and only commit a real peer size after the component becomes visible.
     // Re-applying the intended size here is what actually makes the UI
@@ -1155,7 +1322,7 @@ void PluginEditor::visibilityChanged()
     if (getWidth() != kUiWidth || getHeight() != kUiHeight)
         setSize (kUiWidth, kUiHeight);
 
-    // The host may have laid the children out at the wrong (small) size
+    // The host may have laid out the children at the wrong (small) size
     // before our setSize took effect.  Force a fresh layout + repaint so
     // every child is correctly positioned on the very first show.
     resized();
@@ -1181,23 +1348,24 @@ void PluginEditor::resized()
 
         // Title (left)
         headerTitle.setBounds (padX, midY, 220, titleH);
-        // Backend status (right of title row)
-        backendStatusLabel.setBounds (W - padX - 200, midY + 4, 200, titleH - 4);
+        // Backend status (right, top row)
+        backendStatusLabel.setBounds (W - padX - 220, midY + 2, 220, 14);
 
         // Subtitle (left, below title)
         headerSubtitle.setBounds (padX, midY + titleH + 2, 400, subH);
-        // Chip (right, below status)
-        chipLabel.setBounds (W - padX - 220, midY + titleH + 2, 220, subH);
+        // Chip info (right, below backend status)
+        chipLabel.setBounds (W - padX - 220, midY + titleH, 220, subH);
     }
 
     // ── MODE TABS (y: kHeaderHeight..kHeaderHeight+kModeTabHeight) ──────
     {
         const int tabsY = kHeaderHeight;
         // The two buttons each take 50% of the available width minus a
-        // small gap, with a vertical separator between them.
-        const int tabW = (W - kOuterPad * 2 - 4) / 2;
-        modeTabT2a.setBounds (kOuterPad,             tabsY + 4, tabW, kModeTabHeight - 8);
-        modeTabA2a.setBounds (kOuterPad + tabW + 4,  tabsY + 4, tabW, kModeTabHeight - 8);
+        // small gap, with spacing between them.
+        const int tabGap = 8;
+        const int tabW = (W - kOuterPad * 2 - tabGap) / 2;
+        modeTabT2a.setBounds (kOuterPad,                  tabsY + 6, tabW, kModeTabHeight - 12);
+        modeTabA2a.setBounds (kOuterPad + tabW + tabGap,  tabsY + 6, tabW, kModeTabHeight - 12);
     }
 
     // Content area starts below header + tabs
@@ -1240,82 +1408,91 @@ void PluginEditor::resized()
     int colW = mainW;
     const int gap = 8;
 
-    // MODEL — single compact row (label + selector)
-    modelLabel.setBounds (x, y, 70, 22);
-    modelSelector->setBounds (x + 74, y, colW - 74, 22);
+    // MODEL — dropdown + folder button.  The "model / <name>" prefix
+    // is shown inside the selector itself; no separate label needed.
+    // The folder button ends at the right edge of the column (same x
+    // as the prompt editor + RANDOM MUSIC button).  The component has
+    // 4px internal left padding, so we shift it left by 4 to align
+    // the visible combo box text with the prompt editor's left edge.
+    {
+        const int modelRowH = 22;
+        // +8 to width: 4px internal left padding + 4px internal right
+        // padding, so the folder button ends at x + colW and the combo
+        // box text starts at x.
+        modelSelector->setBounds (x - 4, y, colW + 8, modelRowH);
+    }
     y += 22 + gap;
 
     // PROMPT — single line, ~3 lines tall.  The two "RANDOM" buttons
     // sit in the top-right of this row, on the same line as the
     // PROMPT label, so they never steal height from the text field
     // below.  SFX is hidden in A2A but the layout slot is reserved.
-    const int randBtnW = 88;
-    const int randBtnGap = 4;
-    const int randBtnH = 18;
-    promptLabel.setBounds (x, y,
-                           colW - 2 * randBtnW - randBtnGap - 6, 14);
+    // The label/buttons row is vertically centered between the model
+    // row above and the prompt editor below.
+    const int randBtnW = 84;
+    const int randBtnGap = 6;
+    const int randBtnH = 14;
+    const int promptEditorH = 72;
+    const int gapBelowPromptRow = 8;
+    const int gapAbovePromptRow = 8;
+    // Center the label row in the gap between the model row bottom
+    // and the prompt editor top.
+    const int labelRowY = y - gapAbovePromptRow + gapBelowPromptRow;
+    promptLabel.setBounds (x, labelRowY,
+                            colW - 2 * randBtnW - randBtnGap - 8, randBtnH);
     randomSfxPromptButton.setBounds (x + colW - 2 * randBtnW - randBtnGap,
-                                     y - 2, randBtnW, randBtnH);
-    randomMusicPromptButton.setBounds (x + colW - randBtnW, y - 2,
-                                       randBtnW, randBtnH);
-    y += 16;
-    promptEditor.setBounds (x, y, colW, 64);
-    y += 64 + gap;
+                                      labelRowY, randBtnW, randBtnH);
+    randomMusicPromptButton.setBounds (x + colW - randBtnW, labelRowY,
+                                        randBtnW, randBtnH);
+    y = labelRowY + randBtnH + gapBelowPromptRow;
+    promptEditor.setBounds (x, y, colW, promptEditorH);
+    y += promptEditorH + gap;
 
-    // SOLO-INSTRUMENT row (SHARED by T2A and A2A — the user can solo
-    // an instrument in both modes).  Always positioned at the same y
-    // so the layout doesn't shift between modes.  The toggle takes
-    // 150 px on the left, the dropdown fills the rest.  Disabled
-    // for the FX model by updateSoloEnabled().
-    {
-        const int soloH = 22;
-        const int toggleW = 150;
-        soloToggle      .setBounds (x, y, toggleW, soloH);
-        soloInstrument  .setBounds (x + toggleW + 6, y, colW - toggleW - 6, soloH);
-        y += soloH;
-    }
-
-    // TAGS row (T2A only) / INIT-NOISE row (A2A only) — they share
+    // SOLO + TAGS row (T2A only) / INIT-NOISE row (A2A only) — they share
     // the same vertical slot so the layout doesn't shift between
-    // modes.  TAGS is two checkboxes "KEY" and "BPM" that gate
-    // whether the corresponding tag is appended to the prompt.
-    // INIT-NOISE is the σmax slider that controls how much the A2A
-    // model regenerates from the input audio.  Always advance y by
-    // one row (22 px) regardless of mode.
+    // modes.  T2A layout: [Solo toggle] [solo combo] [TAGS label]
+    // [KEY] [BPM].  A2A layout: [INIT NOISE label] [Subtle] [Balanced]
+    // [Creative] [textBox].  Always advance y by one row regardless
+    // of mode.  Disabled for the FX model by updateSoloEnabled().
     {
-        // TAGS (T2A only — hidden in A2A by setMode()).
-        const int tagH = 22;
-        const int tagLabelW = 50;
-        const int tagToggleW = 70;
-        tagsLabel           .setBounds (x, y, tagLabelW, tagH);
-        includeKeyInPrompt  .setBounds (x + tagLabelW + 4, y, tagToggleW, tagH);
-        includeBpmInPrompt  .setBounds (x + tagLabelW + 4 + tagToggleW + 8, y,
-                                        tagToggleW, tagH);
+        const int soloH = 26;
+        const int toggleW = 140;
+        const int tagH = 24;
+        const int tagLabelW = 48;
+        const int tagToggleW = 64;
+        const int gapAfterSolo = 8;
+        const int gapAfterLabel = 6;
+        const int gapAfterKey = 8;
+        const int soloComboW = colW - toggleW - gapAfterSolo
+                             - tagLabelW - gapAfterLabel
+                             - tagToggleW - gapAfterKey
+                             - tagToggleW;
+        soloToggle      .setBounds (x, y, toggleW, soloH);
+        soloInstrument  .setBounds (x + toggleW + gapAfterSolo, y, soloComboW, soloH);
+        int tx = x + toggleW + gapAfterSolo + soloComboW + gapAfterSolo;
+        tagsLabel           .setBounds (tx, y, tagLabelW, tagH);
+        includeKeyInPrompt  .setBounds (tx + tagLabelW + gapAfterLabel, y, tagToggleW, tagH);
+        includeBpmInPrompt  .setBounds (tx + tagLabelW + gapAfterLabel + tagToggleW + gapAfterKey,
+                                         y, tagToggleW, tagH);
 
         // INIT NOISE (A2A only — hidden in T2A by setMode()).  Same
-        // y as the TAGS row, same height.
-        const int noiseH = 22;
-        initNoiseLabel.setBounds (x, y, 90, noiseH);
-        initNoiseSlider.setBounds (x + 94, y, colW - 94 - 110, noiseH);
-        initNoiseValueLabel.setBounds (x + colW - 106, y, 106, noiseH);
-        y += tagH;
-    }
-
-    // Quick-pick preset chips (A2A only).  Three small buttons in a
-    // compact row under the slider; clicking sets the slider to the
-    // preset value.  Positioned at the right edge of the column so
-    // they don't crowd the rest of the layout.  In T2A the row is
-    // empty (controls are hidden by setMode()).
-    {
-        const int chipH   = 20;
+        // y as the TAGS row, same height.  Layout: [label] [Subtle]
+        // [Balanced] [Creative] [textBox], all left-anchored with chipGap
+        // between every element.
+        const int noiseH = 24;
+        const int noiseLabelW = 72;
+        const int noiseTextW = 44;
+        const int chipH = noiseH;
         const int chipGap = 6;
-        const int chipW   = 78;
-        const int chipsTotalW = 3 * chipW + 2 * chipGap;
-        int cx = x + colW - chipsTotalW;
-        initNoisePresetSubtle  .setBounds (cx, y, chipW, chipH);  cx += chipW + chipGap;
-        initNoisePresetBalanced.setBounds (cx, y, chipW, chipH);  cx += chipW + chipGap;
-        initNoisePresetCreative.setBounds (cx, y, chipW, chipH);
-        y += chipH + gap;
+        const int chipW = 64;
+        int nx = x;
+        initNoiseLabel.setBounds (nx, y, noiseLabelW, noiseH);
+        nx += noiseLabelW + chipGap;
+        initNoisePresetSubtle  .setBounds (nx, y, chipW, chipH);  nx += chipW + chipGap;
+        initNoisePresetBalanced.setBounds (nx, y, chipW, chipH);  nx += chipW + chipGap;
+        initNoisePresetCreative.setBounds (nx, y, chipW, chipH);  nx += chipW + chipGap;
+        initNoiseTextBox.setBounds (nx, y, noiseTextW, noiseH);
+        y += soloH + 8;
     }
 
     // "Currently selected input" indicator (always hidden — the
@@ -1334,54 +1511,66 @@ void PluginEditor::resized()
     // button sits directly under the prompt/init-noise.
     if (currentMode == Mode::T2A)
     {
-        // KEY + TEMPO + SAMPLE RATE — all on one row
+        // Left-anchored chain: [KEY] [root] [mode] [TEMPO] [bpmBox] [DURATION] [S] [B] [durBox]
+        // Right-anchored:                                                       [SR] [srBox]
         const int kRowY = y;
-        keyLabel.setBounds (x, kRowY, 30, 22);
-        keyRoot.setBounds  (x + 32, kRowY, 70, 22);
-        keyMode.setBounds  (x + 106, kRowY, 70, 22);
-        useProjectBpm.setBounds (x + 184, kRowY, 120, 22);
-        // BPM slider ends well before the SR dropdown so the latter has
-        // room for "44.1 kHz" / "48 kHz" without ellipsising.
-        bpmSlider.setBounds     (x + 308, kRowY, colW - 308 - 160, 22);
-        bpmValueLabel.setBounds (x + colW - 156, kRowY, 44, 22);
-        sampleRateLabel.setBounds (x + colW - 108, kRowY, 24, 22);
-        sampleRateBox.setBounds   (x + colW - 80,  kRowY, 80, 22);
-        y += 22 + gap;
+        const int kRowH = 26;
+        const int g = 6;
+        const int keyLblW    = 28;
+        const int keyRootW   = 52;
+        const int keyModeW   = 64;
+        const int bpmLblW    = 46;
+        const int bpmBoxW    = 44;
+        const int durLblW    = 60;
+        const int unitBtnW   = 60;
+        const int durBoxW    = 44;
+        const int srLblW     = 24;
+        const int srBoxW     = 72;
 
-        // Duration row
-        useCustom.setBounds (x, y, 140, 22);
-        // S | B segmented control, 36px each so they're easy to click and
-        // the single-letter labels don't get clipped.
-        unitSecButton.setBounds (x + 144, y, 36, 22);
-        unitBarButton.setBounds (x + 144 + 36, y, 36, 22);
-        customSlider.setBounds (x + 144 + 36 + 36 + 6, y,
-                                colW - (144 + 36 + 36 + 6) - 84, 22);
-        customValueLabel.setBounds (x + colW - 80, y, 80, 22);
-        y += 22 + gap + 4;
+        sampleRateBox  .setBounds (x + colW - srBoxW, kRowY, srBoxW, kRowH);
+        sampleRateLabel.setBounds (sampleRateBox .getX() - g - srLblW, kRowY, srLblW, kRowH);
+
+        keyLabel       .setBounds (x, kRowY, keyLblW, kRowH);
+        keyRoot        .setBounds (x + keyLblW, kRowY, keyRootW, kRowH);
+        keyMode        .setBounds (keyRoot .getRight() + 4, kRowY, keyModeW, kRowH);
+        bpmLabel       .setBounds (keyMode .getRight() + g, kRowY, bpmLblW, kRowH);
+        bpmTextBox     .setBounds (bpmLabel.getRight(), kRowY, bpmBoxW, kRowH);
+        durationLabel  .setBounds (bpmTextBox.getRight() + g, kRowY, durLblW, kRowH);
+        unitSecButton  .setBounds (durationLabel.getRight() + g, kRowY, unitBtnW, kRowH);
+        unitBarButton  .setBounds (unitSecButton.getRight() + 4, kRowY, unitBtnW, kRowH);
+        customTextBox  .setBounds (unitBarButton.getRight() + g, kRowY, durBoxW, kRowH);
+
+        y += kRowH + gap;
     }
 
-    // GENERATE (full width, prominent)
-    generateButton.setBounds (x, y, colW, 38);
-    y += 38 + gap;
+    // GENERATE (full width, prominent outlined button)
+    generateButton.setBounds (x, y + 4, colW, 40);
+    y += 40 + gap + 6;
 
-    // Waveform (takes remaining space minus transport + status row)
+    // Waveform fills the remaining space above the transport row.
+    // The transport row is aligned with the bottom of the side panel
+    // (file browser) so the controls sit at the very bottom of the
+    // editor, and the waveform stretches to fill the gap above.
     const int transportH = 32;
     const int statusH    = 18;
-    const int waveH = contentH - (y - contentY) - transportH - statusH - gap;
+    const int transportY = contentY + contentH - transportH;
+    const int waveH = transportY - y - gap;
     waveform.setBounds (x, y, colW, std::max (70, waveH));
     y += std::max (70, waveH) + gap;
 
-    // Transport row
-    int trX = x;
-    playButton.setBounds   (trX, y, 64, transportH - 4); trX += 68;
-    stopButton.setBounds   (trX, y, 64, transportH - 4); trX += 68;
-    loopButton.setBounds   (trX, y, 64, transportH - 4); trX += 68;
-    saveWavButton.setBounds (trX, y, 84, transportH - 4); trX += 88;
-    copyToClipboardButton.setBounds (trX, y, colW - (trX - x), transportH - 4);
-    y += transportH;
+    // Transport row: [▶ Play] [⏹ Stop] [Loop] [Save WAV] [Copy to Clipboard]
+    {
+        int trX = x;
+        const int btnGap = 6;
+        playButton.setBounds   (trX, transportY, 72, transportH - 4); trX += 72 + btnGap;
+        stopButton.setBounds   (trX, transportY, 72, transportH - 4); trX += 72 + btnGap;
+        loopButton.setBounds   (trX, transportY, 60, transportH - 4); trX += 60 + btnGap;
+        saveWavButton.setBounds (trX, transportY, 80, transportH - 4); trX += 80 + btnGap;
+        copyToClipboardButton.setBounds (trX, transportY, colW - (trX - x), transportH - 4);
+    }
 
-    // Status row (toast messages)
-    statusLabel.setBounds (x, y, colW, statusH);
+    // Status row (toast messages) — sits just above the transport row.
+    statusLabel.setBounds (x, transportY - statusH, colW, statusH);
 
     // Progress overlay covers the whole window
     progressOverlay->setBounds (0, 0, W, H);
@@ -1417,13 +1606,6 @@ void PluginEditor::timerCallback()
         s == BackendState::Running ? lnf.success :
         s == BackendState::Busy    ? lnf.warning :
         s == BackendState::Error || s == BackendState::Crashed ? lnf.danger : lnf.textMuted);
-    bpmValueLabel.setText (juce::String (static_cast<int> (bpmSlider.getValue())) + " BPM",
-                            juce::dontSendNotification);
-    // The duration value label is unit-aware (sec / bars) and is kept
-    // in sync by updateDurationValueLabel(); the timer must NOT just
-    // hardcode " sec" — that would clobber the BARS suffix.
-    updateDurationValueLabel();
-
     // If loadFromSettings() ran before the model selector's list was
     // populated, the saved model id may not have been applicable yet.
     // Re-apply it now (cheap, idempotent — setSelectedId is a no-op
@@ -1501,8 +1683,11 @@ void PluginEditor::timerCallback()
 
 void PluginEditor::updateFromHost()
 {
-    if (useProjectBpm.getToggleState())
-        bpmSlider.setValue (processor.getHostBpm(), juce::dontSendNotification);
+#ifndef IS_STANDALONE_BUILD
+    useProjectBpm.setToggleState (false, juce::dontSendNotification);
+    bpmSlider.setEnabled (true);
+#endif
+    updateBpmValueLabel();
 }
 
 void PluginEditor::updateGenerateButton()
@@ -1666,8 +1851,7 @@ void PluginEditor::generateClicked()
     req.key.root      = keyRoot.getSelectedId() - 1;
     req.key.mode      = keyMode.getSelectedId() == 2 ? ScaleMode::Minor : ScaleMode::Major;
     req.modelId       = modelSelector->getSelectedId();
-    req.durationSec   = useCustom.getToggleState() ? getEffectiveDurationSec() :
-                         (selectionDurationAvailable ? selectionDurationSec : kDefaultDurationSeconds);
+    req.durationSec   = getEffectiveDurationSec();
     req.sampleRate    = sampleRateBox.getSelectedId() == 2 ? 48000 : 44100;
     req.seamlessLoop  = true;
     // KEY/BPM in-prompt flags — sent to the Python PromptBuilder on
@@ -1888,6 +2072,12 @@ void PluginEditor::onT2aHistoryDelete (const HistoryEntry& e)
 {
     processor.getHistory().remove (e.id);
     showStatus ("Deleted " + e.audioFile.getFileName() + ".");
+}
+
+void PluginEditor::onT2aHistoryPrompt (const HistoryEntry& e)
+{
+    promptEditor.setText (e.prompt, juce::dontSendNotification);
+    showStatus ("Prompt loaded from history");
 }
 
 void PluginEditor::onT2aHistoryClear()
@@ -2138,7 +2328,9 @@ void PluginEditor::updateTagsEnabled()
     keyMode       .setEnabled (allowKey);
 
     bpmLabel      .setEnabled (allowBpm);
+#ifndef IS_STANDALONE_BUILD
     useProjectBpm .setEnabled (allowBpm);
+#endif
     bpmSlider     .setEnabled (allowBpm);
     bpmValueLabel .setEnabled (allowBpm);
     autoBpmButton .setEnabled (allowBpm);
@@ -2515,6 +2707,7 @@ void PluginEditor::jobFinished (const Job& job)
             if (job.kind == "a2a")
             {
                 e.kind           = "a2a";
+                e.prompt         = job.a2aRequest.prompt;
                 e.sourceFile     = job.a2aRequest.initAudio.getFullPathName();
                 e.initNoiseLevel = job.a2aRequest.initNoiseLevel;
             }
@@ -2535,6 +2728,31 @@ void PluginEditor::jobFinished (const Job& job)
 void PluginEditor::modelStateChanged (const ModelState&)
 {
     updateGenerateButton();
+    // Sync the external status pill with the current model state
+    auto states = processor.getModelManager().getStates();
+    auto id = modelSelector->getSelectedId();
+    for (auto& s : states)
+    {
+        if (s.desc.id == id)
+        {
+            juce::String status;
+            switch (s.status)
+            {
+                case ModelStatus::Ready:        status = "Ready"; break;
+                case ModelStatus::NotInstalled: status = "Not Installed"; break;
+                case ModelStatus::Downloading:  status = juce::String ("Downloading ") + juce::String (static_cast<int> (s.progress * 100.0)) + "%"; break;
+                case ModelStatus::Verifying:    status = "Verifying..."; break;
+                case ModelStatus::Loading:      status = "Loading..."; break;
+                case ModelStatus::Error:        status = "Error"; break;
+            }
+            modelStatusLabel.setText (status, juce::dontSendNotification);
+            modelStatusLabel.setColour (juce::Label::textColourId,
+                s.status == ModelStatus::Ready     ? juce::Colour::fromRGB (90, 220, 150) :
+                s.status == ModelStatus::Error     ? juce::Colour::fromRGB (255, 90, 100) :
+                                                     juce::Colour::fromRGB (235, 237, 245));
+            break;
+        }
+    }
 }
 
 } // namespace dawalka

@@ -25,12 +25,16 @@
 
 #import <Cocoa/Cocoa.h>
 
+
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSTextViewDelegate>
 @property (strong) NSWindow             *window;
 @property (strong) NSTextView            *outputView;
 @property (strong) NSButton              *installButton;
 @property (strong) NSButton              *uninstallButton;
 @property (strong) NSButton              *revealButton;
+@property (strong) NSButton              *checkboxAU;
+@property (strong) NSButton              *checkboxVST3;
+@property (strong) NSButton              *checkboxStandalone;
 @property (assign) BOOL                  scriptRunning;
 @end
 
@@ -173,9 +177,31 @@
 
 - (void)installClicked:(id)sender
 {
+    NSMutableArray *args = [NSMutableArray array];
+
+    BOOL au      = ([self.checkboxAU state] == NSControlStateValueOn);
+    BOOL vst3    = ([self.checkboxVST3 state] == NSControlStateValueOn);
+    BOOL stand   = ([self.checkboxStandalone state] == NSControlStateValueOn);
+
+    if (!au && !vst3 && !stand) {
+        [self appendLine:@"\n\u26A0\uFE0F  No component selected. Check at least one option.\n"];
+        return;
+    }
+
+    if (au)      [args addObject:@"--au"];
+    if (vst3)    [args addObject:@"--vst3"];
+    if (stand)   [args addObject:@"--standalone"];
+
+    NSMutableString *title = [NSMutableString stringWithFormat:@"Installing DAWalka"];
+    NSMutableArray *parts = [NSMutableArray array];
+    if (au)      [parts addObject:@"AU"];
+    if (vst3)    [parts addObject:@"VST3"];
+    if (stand)   [parts addObject:@"Standalone"];
+    [title appendString:[NSString stringWithFormat:@" (%@)", [parts componentsJoinedByString:@", "]]];
+
     [self runScriptNamed:@"install"
-                   title:@"Installing DAWalka"
-                   extra:@[]];   // no --yes: install is non-interactive already
+                    title:title
+                    extra:args];
 }
 
 - (void)uninstallClicked:(id)sender
@@ -252,13 +278,14 @@
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification
 {
-    // Activate as a regular GUI app (so we get a Dock icon and a real
-    // window instead of a background-only process — we don't set
-    // LSUIElement in Info.plist).
-    [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-    [NSApp activateIgnoringOtherApps:YES];
+    @try {
+        // Activate as a regular GUI app (so we get a Dock icon and a real
+        // window instead of a background-only process — we don't set
+        // LSUIElement in Info.plist).
+        [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+        [NSApp activateIgnoringOtherApps:YES];
 
-    NSRect frame = NSMakeRect(0, 0, 580, 440);
+        NSRect frame = NSMakeRect(0, 0, 580, 510);
     self.window = [[NSWindow alloc] initWithContentRect:frame
                                               styleMask:(NSWindowStyleMaskTitled |
                                                          NSWindowStyleMaskClosable |
@@ -272,7 +299,7 @@
 
     // Title ------------------------------------------------------------------
     NSTextField *title = [[NSTextField alloc]
-        initWithFrame:NSMakeRect(20, 400, 540, 26)];
+        initWithFrame:NSMakeRect(20, 470, 540, 26)];
     title.stringValue = @"DAWalka \u2014 AI Audio Generator";
     title.font = [NSFont boldSystemFontOfSize:17];
     title.bezeled = NO;
@@ -282,8 +309,8 @@
     [content addSubview:title];
 
     NSTextField *subtitle = [[NSTextField alloc]
-        initWithFrame:NSMakeRect(20, 378, 540, 18)];
-    subtitle.stringValue = @"Install or remove the Audio Unit plugin for Logic.";
+        initWithFrame:NSMakeRect(20, 448, 540, 18)];
+    subtitle.stringValue = @"Choose what to install, then click Install.";
     subtitle.textColor = [NSColor secondaryLabelColor];
     subtitle.font = [NSFont systemFontOfSize:11.5];
     subtitle.bezeled = NO;
@@ -308,7 +335,7 @@
     // paragraph alignment), so the whole header column reads as
     // one tidy left-aligned block.
     NSTextView *githubLink = [[NSTextView alloc]
-        initWithFrame:NSMakeRect(20, 346, 540, 24)];
+        initWithFrame:NSMakeRect(20, 416, 540, 24)];
     githubLink.editable = NO;
     // selectable=YES is required for NSTextView to detect and
     // dispatch link clicks.  editable=NO is required so the
@@ -376,9 +403,64 @@
     githubLink.textStorage.attributedString = ghAttr;
     [content addSubview:githubLink];
 
+    // Checkboxes — component selection ---------------------------------------
+    {
+        CGFloat y = 376;
+
+        self.checkboxAU = [[NSButton alloc] initWithFrame:NSMakeRect(28, y, 190, 24)];
+        [self.checkboxAU setButtonType:NSButtonTypeSwitch];
+        [self.checkboxAU setTitle:@"Audio Unit (AU)"];
+        [self.checkboxAU setState:NSControlStateValueOn];
+        [content addSubview:self.checkboxAU];
+
+        NSTextField *auDesc = [[NSTextField alloc] initWithFrame:NSMakeRect(218, y, 334, 18)];
+        auDesc.stringValue = @"for Logic Pro, GarageBand and other AU hosts";
+        auDesc.textColor = [NSColor secondaryLabelColor];
+        auDesc.font = [NSFont systemFontOfSize:11.5];
+        auDesc.bezeled = NO;
+        auDesc.drawsBackground = NO;
+        auDesc.editable = NO;
+        auDesc.selectable = NO;
+        [content addSubview:auDesc];
+
+        y -= 30;
+        self.checkboxVST3 = [[NSButton alloc] initWithFrame:NSMakeRect(28, y, 190, 24)];
+        [self.checkboxVST3 setButtonType:NSButtonTypeSwitch];
+        [self.checkboxVST3 setTitle:@"VST3 plugin"];
+        [self.checkboxVST3 setState:NSControlStateValueOn];
+        [content addSubview:self.checkboxVST3];
+
+        NSTextField *vst3Desc = [[NSTextField alloc] initWithFrame:NSMakeRect(218, y, 334, 18)];
+        vst3Desc.stringValue = @"for Ableton Live, Reaper, Bitwig and other VST3 hosts";
+        vst3Desc.textColor = [NSColor secondaryLabelColor];
+        vst3Desc.font = [NSFont systemFontOfSize:11.5];
+        vst3Desc.bezeled = NO;
+        vst3Desc.drawsBackground = NO;
+        vst3Desc.editable = NO;
+        vst3Desc.selectable = NO;
+        [content addSubview:vst3Desc];
+
+        y -= 30;
+        self.checkboxStandalone = [[NSButton alloc] initWithFrame:NSMakeRect(28, y, 190, 24)];
+        [self.checkboxStandalone setButtonType:NSButtonTypeSwitch];
+        [self.checkboxStandalone setTitle:@"Standalone app"];
+        [self.checkboxStandalone setState:NSControlStateValueOn];
+        [content addSubview:self.checkboxStandalone];
+
+        NSTextField *standDesc = [[NSTextField alloc] initWithFrame:NSMakeRect(218, y, 334, 18)];
+        standDesc.stringValue = @"native app in /Applications — no DAW required";
+        standDesc.textColor = [NSColor secondaryLabelColor];
+        standDesc.font = [NSFont systemFontOfSize:11.5];
+        standDesc.bezeled = NO;
+        standDesc.drawsBackground = NO;
+        standDesc.editable = NO;
+        standDesc.selectable = NO;
+        [content addSubview:standDesc];
+    }
+
     // Buttons ----------------------------------------------------------------
     self.installButton = [[NSButton alloc]
-        initWithFrame:NSMakeRect(20, 304, 170, 36)];
+        initWithFrame:NSMakeRect(20, 270, 170, 36)];
     self.installButton.title = @"Install";
     self.installButton.bezelStyle = NSBezelStyleRounded;
     self.installButton.target = self;
@@ -387,7 +469,7 @@
     [content addSubview:self.installButton];
 
     self.uninstallButton = [[NSButton alloc]
-        initWithFrame:NSMakeRect(200, 304, 170, 36)];
+        initWithFrame:NSMakeRect(200, 270, 170, 36)];
     self.uninstallButton.title = @"Uninstall";
     self.uninstallButton.bezelStyle = NSBezelStyleRounded;
     self.uninstallButton.target = self;
@@ -395,7 +477,7 @@
     [content addSubview:self.uninstallButton];
 
     self.revealButton = [[NSButton alloc]
-        initWithFrame:NSMakeRect(380, 304, 80, 36)];
+        initWithFrame:NSMakeRect(380, 270, 80, 36)];
     self.revealButton.title = @"Reveal";
     self.revealButton.bezelStyle = NSBezelStyleRounded;
     self.revealButton.target = self;
@@ -404,7 +486,7 @@
     [content addSubview:self.revealButton];
 
     NSButton *docsButton = [[NSButton alloc]
-        initWithFrame:NSMakeRect(465, 304, 95, 36)];
+        initWithFrame:NSMakeRect(465, 270, 95, 36)];
     docsButton.title = @"README";
     docsButton.bezelStyle = NSBezelStyleRounded;
     docsButton.target = self;
@@ -413,13 +495,13 @@
 
     // Output view ------------------------------------------------------------
     NSScrollView *scroll = [[NSScrollView alloc]
-        initWithFrame:NSMakeRect(20, 20, 540, 270)];
+        initWithFrame:NSMakeRect(20, 20, 540, 246)];
     scroll.hasVerticalScroller = YES;
     scroll.borderType = NSBezelBorder;
     scroll.autohidesScrollers = NO;
 
     self.outputView = [[NSTextView alloc]
-        initWithFrame:NSMakeRect(0, 0, 540, 270)];
+        initWithFrame:NSMakeRect(0, 0, 540, 246)];
     self.outputView.editable = NO;
     self.outputView.selectable = YES;
     self.outputView.backgroundColor = [NSColor textBackgroundColor];
@@ -434,7 +516,7 @@
     // even when the user scrolls the install output above it.
     NSTextField *versionLabel = [[NSTextField alloc]
         initWithFrame:NSMakeRect(20, 4, 200, 14)];
-    versionLabel.stringValue = @"DAWalka v1.1.1";
+    versionLabel.stringValue = @"DAWalka v1.2.0";
     versionLabel.textColor = [NSColor tertiaryLabelColor];
     versionLabel.font = [NSFont systemFontOfSize:9.5];
     versionLabel.bezeled = NO;
@@ -446,19 +528,29 @@
     // Welcome text -----------------------------------------------------------
     [self appendLine:@"DAWalka Installer\n"];
     [self appendLine:@"=================\n\n"];
-    [self appendLine:@"Click \xE2\x9C\x95 Install to set up DAWalka, or \xE2\x9C\x95 Uninstall to remove it.\n\n"];
+    [self appendLine:@"Choose what to install using the checkboxes above,\n"];
+    [self appendLine:@"then click \xE2\x9C\x95 Install.\n\n"];
+    [self appendLine:@"Components:\n"];
+    [self appendLine:@"  AU plugin     — for Logic Pro, GarageBand, etc.\n"];
+    [self appendLine:@"  VST3 plugin   — for Ableton Live, Reaper, Bitwig, etc.\n"];
+    [self appendLine:@"  Standalone    — native app in /Applications (no DAW needed)\n\n"];
     [self appendLine:@"Install does:\n"];
     [self appendLine:@"  1. Creates a Python virtual environment\n"];
     [self appendLine:@"  2. Installs MLX, sentencepiece, aiohttp, ...\n"];
     [self appendLine:@"  3. Downloads the Stable Audio 3 model weights (~6.7 GB)\n"];
-    [self appendLine:@"  4. Copies the pre-built Audio Unit to ~/Library/Audio/Plug-Ins/Components/\n"];
-    [self appendLine:@"  5. Verifies with auval\n\n"];
-    [self appendLine:@"All output is shown below in real time.  If something fails,\n"];
-    [self appendLine:@"you can copy the error from here for a bug report.\n\n"];
+    [self appendLine:@"  4. Copies selected components to their locations\n\n"];
+    [self appendLine:@"All output is shown below in real time.\n\n"];
     [self appendLine:@"---\n"];
-    [self appendLine:@"DAWalka v1.1.1\n"];
+    [self appendLine:@"DAWalka v1.2.0\n"];
 
     [self.window makeKeyAndOrderFront:nil];
+    } @catch (NSException *e) {
+        NSAlert *alert = [[NSAlert alloc] init];
+        alert.messageText = @"DAWalka Installer Error";
+        alert.informativeText = [NSString stringWithFormat:@"Failed to create installer window:\n\n%@ — %@", e.name, e.reason ?: @"(no details)"];
+        [alert addButtonWithTitle:@"OK"];
+        [alert runModal];
+    }
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender

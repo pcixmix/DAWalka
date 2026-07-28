@@ -22,6 +22,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_PATH="$HOME/Library/Audio/Plug-Ins/Components/DAWalka.component"
 VST3_INSTALL_PATH="$HOME/Library/Audio/Plug-Ins/VST3/DAWalka.vst3"
+STANDALONE_INSTALL_PATH="/Applications/DAWalka.app"
 LOG_DIR="$HOME/Library/Application Support/DAWalka"
 VENV_DIR="$LOG_DIR/venv"
 MODELS_DIR="$LOG_DIR/models"
@@ -171,6 +172,7 @@ echo
 step "What's installed"
 have_plugin=0
 have_vst3=0
+have_standalone=0
 have_venv=0
 have_models=0
 have_settings=0
@@ -179,6 +181,7 @@ have_launcher=0
 
 [[ -d "$INSTALL_PATH" ]]    && have_plugin=1   && info "AU plugin:     $INSTALL_PATH  ($(du_h "$INSTALL_PATH"))"
 [[ -d "$VST3_INSTALL_PATH" ]] && have_vst3=1   && info "VST3 plugin:   $VST3_INSTALL_PATH  ($(du_h "$VST3_INSTALL_PATH"))"
+[[ -d "$STANDALONE_INSTALL_PATH" ]] && have_standalone=1 && info "Standalone:    $STANDALONE_INSTALL_PATH  ($(du_h "$STANDALONE_INSTALL_PATH"))"
 [[ -d "$VENV_DIR" ]]        && have_venv=1     && info "Python venv:   $VENV_DIR  ($(du_h "$VENV_DIR"))"
 [[ -d "$MODELS_DIR" ]]      && have_models=1   && info "Models:        $MODELS_DIR  ($(du_h "$MODELS_DIR"))"
 [[ -d "$OUTPUT_DIR" ]]      && have_output=1   && info "Output folder: $OUTPUT_DIR  ($(du_h "$OUTPUT_DIR"))"
@@ -190,7 +193,7 @@ have_launcher=0
                                 && have_settings=1 && info "Settings/history: $SETTINGS_FILE, $LOG_DIR/history.json"
 [[ -f "$LAUNCHER_FILE" ]]   && have_launcher=1 && info "Launcher args: $LAUNCHER_FILE"
 
-if [[ $have_plugin -eq 0 && $have_vst3 -eq 0 && $have_venv -eq 0 && $have_models -eq 0 \
+if [[ $have_plugin -eq 0 && $have_vst3 -eq 0 && $have_standalone -eq 0 && $have_venv -eq 0 && $have_models -eq 0 \
    && $have_output -eq 0 && $have_settings -eq 0 ]]; then
     ok "DAWalka is not installed.  Nothing to remove."
     exit 0
@@ -201,6 +204,7 @@ if [[ $DRY_RUN -eq 1 ]]; then
     step "Dry run — what WOULD be removed"
     [[ $have_plugin -eq 1 ]]   && echo "  - AU plugin:     $INSTALL_PATH"
     [[ $have_vst3 -eq 1 ]]     && echo "  - VST3 plugin:   $VST3_INSTALL_PATH"
+    [[ $have_standalone -eq 1 ]] && echo "  - Standalone:    $STANDALONE_INSTALL_PATH"
     [[ $have_venv -eq 1 ]]     && echo "  - Python venv:   $VENV_DIR"
     [[ $have_models -eq 1 && $KEEP_MODELS -eq 0 ]] && echo "  - Models:        $MODELS_DIR"
     [[ $have_settings -eq 1 && $KEEP_SETTINGS -eq 0 ]] && echo "  - Settings/history: $SETTINGS_FILE, $LOG_DIR/history.json"
@@ -250,6 +254,15 @@ if [[ $have_vst3 -eq 1 ]]; then
     fi
 else
     info "VST3 plugin: not installed"
+fi
+
+# ─── Standalone app ──────────────────────────────────────────────────────
+if [[ $have_standalone -eq 1 ]]; then
+    if ask "Remove the standalone app from $STANDALONE_INSTALL_PATH?" "Y"; then
+        do_remove "Standalone" "$STANDALONE_INSTALL_PATH"
+    fi
+else
+    info "Standalone: not installed"
 fi
 
 # ─── Venv (always removed unless you want to keep it) ─────────────────────
