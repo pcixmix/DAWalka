@@ -2,9 +2,10 @@
 
 ![DAWalka Screenshot](shot.png)
 
-**AI Audio Generator for DAWs** — an AU/VST3 plugin that generates
-music loops, instrument phrases, textures, and sound effects with
-**Stable Audio 3**, fully on-device, inside your DAW project.
+**AI Audio Generator for DAWs** — an AU/VST3 plugin and a standalone
+desktop app that generate music loops, instrument phrases, textures,
+and sound effects with **Stable Audio 3**, fully on-device, inside
+your DAW project or as a standalone app.
 
 Two modes:
 
@@ -18,7 +19,6 @@ Key features:
 * 100% local — no cloud calls after the first model download.
 * Hardware-accelerated on Apple Silicon (MLX → Metal).
 * Generation runs in a separate process — your DAW never blocks.
-* Project BPM and timeline duration are picked up automatically.
 * Drag-and-drop the result straight onto a host track.
 
 Latest version and source:
@@ -31,7 +31,7 @@ Latest version and source:
 
 | | Recommended |
 |---|---|
-| macOS | 14 Sonoma or newer |
+| macOS | 14 Sonoma or newer (standalone desktop app requires macOS 14+; AU/VST3 plugins require macOS 14+) |
 | Mac | Apple Silicon M-series (M1 / M2 / M3 / M4 / M5) |
 | RAM | 16 GB+ |
 | Free disk | 10 GB for the plugin, venv, and all model weights |
@@ -51,7 +51,8 @@ Double-click `DAWalka.app` and click **✕ Install**. The installer will:
 3. Download the Stable Audio 3 model weights (~6.7 GB total) into a
    per-user cache.
 4. Copy the pre-built AU and VST3 plugins into your user plug-in folders.
-5. Verify the AU with `auval` and check that the VST3 bundle is complete.
+5. Install the standalone desktop app into `/Applications`.
+6. Verify the AU with `auval` and check that the VST3 bundle is complete.
 
 The installer is safe to re-run — every step is a no-op if its
 artefact is already in place.
@@ -64,6 +65,7 @@ artefact is already in place.
 |---|---|
 | Audio Unit plugin | `~/Library/Audio/Plug-Ins/Components/DAWalka.component` |
 | VST3 plugin | `~/Library/Audio/Plug-Ins/VST3/DAWalka.vst3` |
+| Standalone app | `/Applications/DAWalka.app` |
 | Python venv | `~/Library/Application Support/DAWalka/venv` |
 | Model weights | `~/Library/Application Support/DAWalka/models` |
 | Settings | `~/Library/Application Support/DAWalka.settings` |
@@ -95,9 +97,10 @@ A2A request.
 ## Uninstall
 
 Open `DAWalka.app` and click **✕ Uninstall**. The uninstaller
-removes the AU/VST3 plugins, the Python venv, the model weights, and the
-plugin's settings. Your generated audio in `~/Documents/DAWalka/`
-is always kept — to delete it, remove the folder manually.
+removes the AU/VST3 plugins, the standalone app, the Python venv,
+the model weights, and the plugin's settings. Your generated audio
+in `~/Documents/DAWalka/` is always kept — to delete it, remove the
+folder manually.
 
 ---
 
@@ -126,6 +129,14 @@ The plugin UI itself is built with **JUCE 8** (C++20, AUv2, VST3, Metal).
 3. Pick `DAWalka` from the AU or VST3 plug-in list.
 4. Choose a model, type a prompt, press **Generate**.
 5. Drag the resulting waveform straight onto a host track.
+
+## Using the standalone app
+
+1. Open `/Applications/DAWalka.app` (or launch it from the
+   `DAWalka.app` installer).
+2. Choose a model, type a prompt, press **Generate**.
+3. The result is written to `~/Documents/DAWalka/T2A/` (or
+   `~/Documents/DAWalka/A2A/`). Drag it into any DAW.
 
 In **A2A** mode the same UI gains an INPUT browser (left panel) and
 an OUTPUT history (right panel). Drop a WAV / AIFF / FLAC / OGG file
