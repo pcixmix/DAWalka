@@ -1,0 +1,44 @@
+# ─── CMake build output ──────────────────────────────────────────────────────
+build/
+
+# ─── Packaged installer app (produced by installer/make_app.sh) ──────────────
+DAWalka.app/
+
+# ─── Python backend runtime artifacts ────────────────────────────────────────
+# venv is created per-machine by the installer; vendor/sa3_mlx is cloned
+# from Stability-AI/stable-audio-3 at install time — neither belongs in source.
+python_backend/venv/
+python_backend/.venv/
+python_backend/vendor/
+python_backend/__pycache__/
+python_backend/*.pyc
+
+# ─── macOS system files ───────────────────────────────────────────────────────
+.DS_Store
+**/.DS_Store
+
+# ─── Xcode / IDE ─────────────────────────────────────────────────────────────
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+# ─── CLion / JetBrains ───────────────────────────────────────────────────────
+.idea/
+cmake-build-*/
+
+# ─── VS Code ─────────────────────────────────────────────────────────────────
+.vscode/
+
+# ─── Compiled object files and static libraries ───────────────────────────────
+*.o
+*.a
+*.dylib
+*.so
+
+# ─── macOS quarantine and extended attributes ─────────────────────────────────
+# (strip these before committing with: xattr -cr .)
+*.icloud

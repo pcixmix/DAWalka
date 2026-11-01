@@ -153,8 +153,62 @@ enum class AppleSilicon
     M4, M4Pro, M4Max
 };
 
-// Musical key — 12 semitones × 2 modes
-enum class ScaleMode { Major, Minor };
+// Musical key — 12 semitones × 5 modes
+//
+// Mode display names used in the UI and the prompt:
+//   Major            — standard major scale
+//   Minor            — natural minor (Aeolian)
+//   Phrygian         — Phrygian mode (b2 over natural minor)
+//   Phrygian Dom.    — Phrygian Dominant (Spanish/Flamenco, b2 + major 3rd)
+//   Maqam            — Arabic Maqam / Hijaz scale (b2 + aug 2nd)
+enum class ScaleMode
+{
+    Major            = 0,
+    Minor            = 1,
+    Phrygian         = 2,
+    PhrygianDominant = 3,
+    Maqam            = 4,
+};
+
+// Serialization token sent over HTTP (key_mode JSON field).
+// These strings are also what the Python PromptBuilder receives.
+inline const char* scaleModeToToken (ScaleMode m)
+{
+    switch (m)
+    {
+        case ScaleMode::Major:            return "major";
+        case ScaleMode::Minor:            return "minor";
+        case ScaleMode::Phrygian:         return "phrygian";
+        case ScaleMode::PhrygianDominant: return "phrygian dominant";
+        case ScaleMode::Maqam:            return "maqam";
+    }
+    return "major";
+}
+
+// Human-readable display label used in prompts and history tooltips.
+inline const char* scaleModeToDisplayName (ScaleMode m)
+{
+    switch (m)
+    {
+        case ScaleMode::Major:            return "Major";
+        case ScaleMode::Minor:            return "Minor";
+        case ScaleMode::Phrygian:         return "Phrygian";
+        case ScaleMode::PhrygianDominant: return "Phrygian Dom.";
+        case ScaleMode::Maqam:            return "Maqam";
+    }
+    return "Major";
+}
+
+// Reverse: token string → ScaleMode (used when deserializing history).
+inline ScaleMode scaleModeFromToken (const juce::String& token)
+{
+    const auto t = token.trim().toLowerCase();
+    if (t == "minor")             return ScaleMode::Minor;
+    if (t == "phrygian dominant") return ScaleMode::PhrygianDominant;
+    if (t == "phrygian")          return ScaleMode::Phrygian;
+    if (t == "maqam")             return ScaleMode::Maqam;
+    return ScaleMode::Major;
+}
 
 struct MusicalKey
 {
@@ -167,8 +221,7 @@ struct MusicalKey
             "C", "C#", "D", "D#", "E", "F",
             "F#", "G", "G#", "A", "A#", "B"
         };
-        return juce::String(names[root]) + " " +
-               (mode == ScaleMode::Major ? "Major" : "Minor");
+        return juce::String(names[root]) + " " + scaleModeToDisplayName(mode);
     }
 
     static std::optional<MusicalKey> parse(const juce::String& text)
@@ -183,8 +236,11 @@ struct MusicalKey
             if (t.startsWith(names[i]))
             {
                 ScaleMode m = ScaleMode::Major;
-                if (t.contains("minor") || t.contains("min") || t.endsWith("m"))
-                    m = ScaleMode::Minor;
+                if      (t.contains("phrygian dominant"))  m = ScaleMode::PhrygianDominant;
+                else if (t.contains("phrygian"))           m = ScaleMode::Phrygian;
+                else if (t.contains("maqam"))              m = ScaleMode::Maqam;
+                else if (t.contains("minor") || t.contains("min") || t.endsWith("m"))
+                                                           m = ScaleMode::Minor;
                 return MusicalKey{ i, m };
             }
         }
@@ -219,7 +275,7 @@ struct GenerationRequest
         auto* obj = new juce::DynamicObject();
         obj->setProperty("prompt",         prompt);
         obj->setProperty("key_root",       key.root);
-        obj->setProperty("key_mode",       key.mode == ScaleMode::Major ? "major" : "minor");
+        obj->setProperty("key_mode",       scaleModeToToken(key.mode));
         obj->setProperty("bpm",            bpm);
         obj->setProperty("duration",       durationSec);
         obj->setProperty("sample_rate",    sampleRate);
@@ -312,7 +368,7 @@ struct HistoryEntry
         obj->setProperty("prompt",     prompt);
         obj->setProperty("bpm",        bpm);
         obj->setProperty("key_root",   key.root);
-        obj->setProperty("key_mode",   key.mode == ScaleMode::Major ? "major" : "minor");
+        obj->setProperty("key_mode",   scaleModeToToken(key.mode));
         obj->setProperty("duration",   durationSec);
         obj->setProperty("sample_rate", sampleRate);
         obj->setProperty("audio",      audioFile.getFullPathName());
@@ -332,7 +388,7 @@ struct HistoryEntry
         e.prompt    = v["prompt"].toString();
         e.bpm       = v["bpm"];
         e.key.root  = v["key_root"];
-        e.key.mode  = v["key_mode"].toString() == "minor" ? ScaleMode::Minor : ScaleMode::Major;
+        e.key.mode  = scaleModeFromToken(v["key_mode"].toString());
         e.durationSec = v["duration"];
         e.sampleRate   = v["sample_rate"];   // 44100 by default if missing in old entries
         e.audioFile = juce::File(v["audio"].toString());

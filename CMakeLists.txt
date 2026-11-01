@@ -290,7 +290,8 @@ function(dawalka_embed_runtime target_name bundle_dir)
         COMMAND sh -c
             "rm -rf '${bundle_dir}/Contents/MacOS/DAWalka Launcher.app' \
               && cp -R '${CMAKE_SOURCE_DIR}/launcher/DAWalka Launcher.app' \
-                     '${bundle_dir}/Contents/MacOS/'"
+                     '${bundle_dir}/Contents/MacOS/' \
+              && chmod +x '${bundle_dir}/Contents/MacOS/DAWalka Launcher.app/Contents/MacOS/launcher'"
         COMMAND /usr/bin/codesign --force --deep --sign - "${bundle_dir}"
         COMMENT "Embedding Python backend into ${target_name} bundle (skipping venv)"
         VERBATIM)
@@ -301,25 +302,31 @@ dawalka_embed_runtime(DAWalka_VST3 "${CMAKE_BINARY_DIR}/VST3/DAWalka.vst3")
 
 # Standalone: embed into the artefacts bundle (where JUCE builds it), then
 # copy to the final location.  This avoids a race with JUCE's own copy step.
+#
+# $<TARGET_BUNDLE_DIR:DAWalka_Standalone> resolves to the actual .app path
+# at build time regardless of config (Release/Debug/etc.), fixing the
+# hardcoded "DAWalka_artefacts/Standalone/" path that broke when CMake
+# placed the binary under "DAWalka_artefacts/Release/Standalone/".
 add_custom_command(TARGET DAWalka_Standalone POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
-        "${CMAKE_BINARY_DIR}/DAWalka_artefacts/Standalone/DAWalka.app/Contents/Resources"
+        "$<TARGET_BUNDLE_DIR:DAWalka_Standalone>/Contents/Resources"
     COMMAND sh -c
         "rsync -a --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' \
                 --exclude='vendor/*/.git' --exclude='vendor/*/build' \
                 '${CMAKE_SOURCE_DIR}/python_backend/' \
-                '${CMAKE_BINARY_DIR}/DAWalka_artefacts/Standalone/DAWalka.app/Contents/Resources/python_backend/'"
+                '$<TARGET_BUNDLE_DIR:DAWalka_Standalone>/Contents/Resources/python_backend/'"
     COMMAND sh -c
-        "rm -rf '${CMAKE_BINARY_DIR}/DAWalka_artefacts/Standalone/DAWalka.app/Contents/MacOS/DAWalka Launcher.app' \
+        "rm -rf '$<TARGET_BUNDLE_DIR:DAWalka_Standalone>/Contents/MacOS/DAWalka Launcher.app' \
           && cp -R '${CMAKE_SOURCE_DIR}/launcher/DAWalka Launcher.app' \
-                 '${CMAKE_BINARY_DIR}/DAWalka_artefacts/Standalone/DAWalka.app/Contents/MacOS/'"
+                 '$<TARGET_BUNDLE_DIR:DAWalka_Standalone>/Contents/MacOS/' \
+          && chmod +x '$<TARGET_BUNDLE_DIR:DAWalka_Standalone>/Contents/MacOS/DAWalka Launcher.app/Contents/MacOS/launcher'"
     COMMAND /usr/bin/codesign --force --deep --sign -
-        "${CMAKE_BINARY_DIR}/DAWalka_artefacts/Standalone/DAWalka.app"
+        "$<TARGET_BUNDLE_DIR:DAWalka_Standalone>"
     COMMAND ${CMAKE_COMMAND} -E make_directory
         "${CMAKE_BINARY_DIR}/Standalone"
     COMMAND sh -c
         "rm -rf '${CMAKE_BINARY_DIR}/Standalone/DAWalka.app' \
-          && cp -R '${CMAKE_BINARY_DIR}/DAWalka_artefacts/Standalone/DAWalka.app' \
+          && cp -R '$<TARGET_BUNDLE_DIR:DAWalka_Standalone>' \
                  '${CMAKE_BINARY_DIR}/Standalone/'"
     COMMAND /usr/bin/codesign --force --deep --sign -
         "${CMAKE_BINARY_DIR}/Standalone/DAWalka.app"
