@@ -974,6 +974,16 @@ class GenerationWorker:
 
 # ─── Prompt builder ──────────────────────────────────────────────────────
 class PromptBuilder:
+    # Maps the token sent by the C++ plugin to a human-readable label
+    # suitable for inclusion in a model prompt.
+    _MODE_LABELS = {
+        "major":             "Major",
+        "minor":             "Minor",
+        "phrygian":          "Phrygian",
+        "phrygian dominant": "Phrygian Dominant",
+        "maqam":             "Maqam",
+    }
+
     @staticmethod
     def build(prompt: str, bpm: int, root: int, mode: str, seamless: bool,
               include_key: bool = True, include_bpm: bool = True) -> str:
@@ -992,7 +1002,10 @@ class PromptBuilder:
         if include_bpm:
             parts.append(f"{int(bpm)} BPM")
         if include_key:
-            parts.append(f"{names[int(root) % 12]} {mode.capitalize()}")
+            mode_label = PromptBuilder._MODE_LABELS.get(
+                (mode or "").strip().lower(), (mode or "Major").capitalize()
+            )
+            parts.append(f"{names[int(root) % 12]} {mode_label}")
         if seamless:
             parts.append("seamless loop")
         parts.append("high quality recording")

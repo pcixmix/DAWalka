@@ -1036,8 +1036,11 @@ void PluginEditor::buildMain()
     keyRoot.onChange = [this] { saveToSettings(); };
     addAndMakeVisible (keyRoot);
 
-    keyMode.addItem ("Major", 1);
-    keyMode.addItem ("Minor", 2);
+    keyMode.addItem ("Major",         1);
+    keyMode.addItem ("Minor",         2);
+    keyMode.addItem ("Phrygian",      3);
+    keyMode.addItem ("Phrygian Dom.", 4);
+    keyMode.addItem ("Maqam",         5);
     keyMode.setSelectedId (kDefaultKeyMode);
     keyMode.onChange = [this] { saveToSettings(); };
     addAndMakeVisible (keyMode);
@@ -1518,7 +1521,7 @@ void PluginEditor::resized()
         const int g = 6;
         const int keyLblW    = 28;
         const int keyRootW   = 52;
-        const int keyModeW   = 64;
+        const int keyModeW   = 96;
         const int bpmLblW    = 46;
         const int bpmBoxW    = 44;
         const int durLblW    = 60;
@@ -1849,7 +1852,19 @@ void PluginEditor::generateClicked()
     req.prompt        = appendSoloTag (promptEditor.getText());
     req.bpm           = static_cast<int> (bpmSlider.getValue());
     req.key.root      = keyRoot.getSelectedId() - 1;
-    req.key.mode      = keyMode.getSelectedId() == 2 ? ScaleMode::Minor : ScaleMode::Major;
+    {
+        // Combo IDs: 1=Major  2=Minor  3=Phrygian  4=PhrygianDominant  5=Maqam
+        static const ScaleMode kModeMap[] = {
+            ScaleMode::Major,
+            ScaleMode::Major,            // index 0 unused (IDs are 1-based)
+            ScaleMode::Minor,
+            ScaleMode::Phrygian,
+            ScaleMode::PhrygianDominant,
+            ScaleMode::Maqam,
+        };
+        const int id = keyMode.getSelectedId();
+        req.key.mode = (id >= 1 && id <= 5) ? kModeMap[id] : ScaleMode::Major;
+    }
     req.modelId       = modelSelector->getSelectedId();
     req.durationSec   = getEffectiveDurationSec();
     req.sampleRate    = sampleRateBox.getSelectedId() == 2 ? 48000 : 44100;
