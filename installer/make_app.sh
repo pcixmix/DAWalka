@@ -134,6 +134,8 @@ fi
 if [[ -d "$PROJECT_ROOT/build/Standalone/DAWalka.app" ]]; then
     cp -R "$PROJECT_ROOT/build/Standalone/DAWalka.app" \
           "$APP_BUNDLE/Contents/Resources/standalone/"
+    # Ensure the launcher binary is executable (git and cp -R can strip +x)
+    chmod +x "$APP_BUNDLE/Contents/Resources/standalone/DAWalka.app/Contents/MacOS/DAWalka Launcher.app/Contents/MacOS/launcher" 2>/dev/null || true
     echo "    standalone/DAWalka.app  ($(du -sh "$APP_BUNDLE/Contents/Resources/standalone/DAWalka.app" | cut -f1))"
 else
     echo "WARNING: build/Standalone/DAWalka.app not found — Standalone will not be bundled" >&2

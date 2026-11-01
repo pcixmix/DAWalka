@@ -290,7 +290,8 @@ function(dawalka_embed_runtime target_name bundle_dir)
         COMMAND sh -c
             "rm -rf '${bundle_dir}/Contents/MacOS/DAWalka Launcher.app' \
               && cp -R '${CMAKE_SOURCE_DIR}/launcher/DAWalka Launcher.app' \
-                     '${bundle_dir}/Contents/MacOS/'"
+                     '${bundle_dir}/Contents/MacOS/' \
+              && chmod +x '${bundle_dir}/Contents/MacOS/DAWalka Launcher.app/Contents/MacOS/launcher'"
         COMMAND /usr/bin/codesign --force --deep --sign - "${bundle_dir}"
         COMMENT "Embedding Python backend into ${target_name} bundle (skipping venv)"
         VERBATIM)
@@ -317,7 +318,8 @@ add_custom_command(TARGET DAWalka_Standalone POST_BUILD
     COMMAND sh -c
         "rm -rf '$<TARGET_BUNDLE_DIR:DAWalka_Standalone>/Contents/MacOS/DAWalka Launcher.app' \
           && cp -R '${CMAKE_SOURCE_DIR}/launcher/DAWalka Launcher.app' \
-                 '$<TARGET_BUNDLE_DIR:DAWalka_Standalone>/Contents/MacOS/'"
+                 '$<TARGET_BUNDLE_DIR:DAWalka_Standalone>/Contents/MacOS/' \
+          && chmod +x '$<TARGET_BUNDLE_DIR:DAWalka_Standalone>/Contents/MacOS/DAWalka Launcher.app/Contents/MacOS/launcher'"
     COMMAND /usr/bin/codesign --force --deep --sign -
         "$<TARGET_BUNDLE_DIR:DAWalka_Standalone>"
     COMMAND ${CMAKE_COMMAND} -E make_directory
